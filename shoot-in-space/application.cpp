@@ -1,6 +1,8 @@
 ﻿
 #include "application.h"
 
+using Microsoft::WRL::ComPtr;
+
 LRESULT CALLBACK window_proc(HWND hwnd, UINT u_msg, WPARAM w_param, LPARAM l_param)
 {
     return application::get_app()->msg_window_proc(hwnd, u_msg, w_param, l_param);
@@ -58,7 +60,13 @@ LRESULT application::msg_window_proc(const HWND hwnd, const UINT u_msg, const WP
         if (LOWORD(w_param) == WA_INACTIVE)
         {
             m_app_paused_ = true;
+            m_timer_.stop();
+        } else
+        {
+            m_app_paused_ = false;
+            m_timer_.start();
         }
+        return 0;
     default:
         break;
     }
@@ -106,6 +114,20 @@ bool application::init_window()
 
 bool application::init_direct3d()
 {
+    dx::throw_if_failed(CreateDXGIFactory1(IID_PPV_ARGS(m_dxgi_factory_.ReleaseAndGetAddressOf())));
+    
+    dx::throw_if_failed(D3D12CreateDevice(
+        nullptr,
+        D3D_FEATURE_LEVEL_12_0,
+        IID_PPV_ARGS(m_d3d_device_.ReleaseAndGetAddressOf())));
+
+    dx::throw_if_failed(m_d3d_device_->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence_)));
+
+    m_rtv_descriptor_size_ = m_d3d_device_->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+    m_dsv_descriptor_size_ = m_d3d_device_->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+    m_cbv_srv_uav_descriptor_size_ = m_d3d_device_->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    
+    
     return true;
 }
 

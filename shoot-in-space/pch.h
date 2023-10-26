@@ -37,3 +37,14 @@
 #include <system_error>
 #include <tuple>
 
+namespace dx
+{
+    inline void throw_if_failed(HRESULT hr)
+    {
+        if (FAILED(hr))
+        {
+            // Set a breakpoint on this line to catch DirectX API errors
+            throw std::exception();
+        }
+    }
+}
