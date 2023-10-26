@@ -78,15 +78,17 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="application.h" />
     <ClInclude Include="d3dx12.h" />
-    <ClInclude Include="Game.h" />
+    <ClInclude Include="game.h" />
     <ClInclude Include="pch.h" />
-    <ClInclude Include="StepTimer.h" />
+    <ClInclude Include="timer.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Game.cpp" />
-    <ClCompile Include="Main.cpp" />
+    <ClCompile Include="application.cpp" />
+    <ClCompile Include="game.cpp" />
     <ClCompile Include="pch.cpp" />
+    <ClCompile Include="timer.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

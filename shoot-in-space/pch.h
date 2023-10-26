@@ -1,5 +1,5 @@
 //
-// pch.h
+// pch.h (precompile header)
 // Header for standard system include files.
 //
 
