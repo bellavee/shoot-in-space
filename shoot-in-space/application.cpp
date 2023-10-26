@@ -127,9 +127,56 @@ bool application::init_direct3d()
     m_dsv_descriptor_size_ = m_d3d_device_->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
     m_cbv_srv_uav_descriptor_size_ = m_d3d_device_->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     
-    
     return true;
 }
+
+void application::create_command_objects()
+{
+    D3D12_COMMAND_QUEUE_DESC queue_desc = {};
+    queue_desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+    queue_desc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
+
+    dx::throw_if_failed(m_d3d_device_->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(m_command_queue_.ReleaseAndGetAddressOf())));
+
+    dx::throw_if_failed(m_d3d_device_->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(m_command_alloc_.ReleaseAndGetAddressOf())));
+
+    dx::throw_if_failed(m_d3d_device_->CreateCommandList(
+        0,
+        D3D12_COMMAND_LIST_TYPE_DIRECT,
+        m_command_alloc_.Get(),
+        nullptr,
+        IID_PPV_ARGS(m_command_list_.GetAddressOf())));
+
+   m_command_list_->Close();
+}
+
+void application::create_swap_chain()
+{
+    m_swap_chain_.Reset();
+    DXGI_SWAP_CHAIN_DESC sd;
+    sd.BufferDesc.Width = m_width_;
+    sd.BufferDesc.Height = m_height_;
+    sd.BufferDesc.RefreshRate.Numerator = 60;
+    sd.BufferDesc.RefreshRate.Denominator = 1;
+    sd.BufferDesc.Format = m_back_buffer_format_;
+    sd.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+    sd.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
+    sd.SampleDesc.Count = m_4_x_msaa_state_ ? 4 : 1;
+    sd.SampleDesc.Quality = m_4_x_msaa_state_ ? (m_4_x_msaa_quality_ - 1) : 0;
+    sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+    sd.BufferCount = c_swap_buffer_count;
+    sd.OutputWindow = m_hwnd_;
+    sd.Windowed = true;
+    sd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+    sd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+    
+    dx::throw_if_failed(m_dxgi_factory_->CreateSwapChain(
+        m_command_queue_.Get(),
+        &sd,
+        m_swap_chain_.GetAddressOf()));
+}
+
+
 
 
 

@@ -19,6 +19,12 @@ public:
 protected:
     bool init_window();
     bool init_direct3d();
+    void create_command_objects();
+    void create_swap_chain();
+    void flush_command_queue();
+    
+
+protected:
     virtual void update(const timer& timer) = 0;
     virtual void render(const timer& timer) = 0;
     
@@ -26,13 +32,16 @@ protected:
     
 protected:
     static application* m_app_;
-    HINSTANCE       m_h_instance_   = nullptr;
-    HWND            m_hwnd_         = nullptr;
-    int             m_width_        = 1600;
-    int             m_height_       = 900;
-    const wchar_t   class_name_[15] = L"Shoot-in-space";
-    LPCWSTR         m_window_name_  = L"Shoot-in-space";
-    bool            m_app_paused_   = false;
+    HINSTANCE       m_h_instance_       = nullptr;
+    HWND            m_hwnd_             = nullptr;
+    int             m_width_            = 1600;
+    int             m_height_           = 900;
+    const wchar_t   class_name_[]       = L"Shoot-in-space";
+    LPCWSTR         m_window_name_      = L"Shoot-in-space";
+    bool            m_app_paused_       = false;
+    bool            m_4_x_msaa_state_   = false;
+    UINT            m_4_x_msaa_quality_ = 0; 
+    
 
     Microsoft::WRL::ComPtr<IDXGIFactory4> m_dxgi_factory_;
     Microsoft::WRL::ComPtr<IDXGISwapChain> m_swap_chain_;
@@ -43,7 +52,7 @@ protected:
 
     Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_command_queue_;
     Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_command_alloc_;
-    Microsoft::WRL::ComPtr<ID3D12CommandList> m_command_list_;
+    Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_command_list_;
 
     static constexpr  UINT c_swap_buffer_count  = 2;
     UINT m_current_buffer_                      = 0;
