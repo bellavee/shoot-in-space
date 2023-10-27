@@ -47,11 +47,15 @@ void game::build_root_signature()
 
 void game::build_shaders_and_input_layout()
 {
-    m_vertex_shader_ = compiler_shaders(L"Shaders\\shader.hlsl", "main", "vs_5_0");
-    m_pixel_shader_ = compiler_shaders(L"Shaders\\shader.hlsl", "main", "ps_5_0");
+    HRESULT hr = S_OK;
+    
+    m_vertex_shader_ = compiler_shaders(L"Shaders\\color.hlsl", "VS", "vs_5_0");
+    m_pixel_shader_ = compiler_shaders(L"Shaders\\color.hlsl", "PS", "ps_5_0");
 
-    m_input_layout_ = {
-        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+    m_input_layout_ =
+    {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
     };
 }
 
@@ -62,9 +66,16 @@ void game::build_pso()
     pso_desc.pRootSignature = m_root_signature_.Get();
     pso_desc.VS = { m_vertex_shader_->GetBufferPointer(), m_vertex_shader_->GetBufferSize() };
     pso_desc.PS = { m_pixel_shader_->GetBufferPointer(), m_pixel_shader_->GetBufferSize() };
+    
+    pso_desc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+    pso_desc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+    pso_desc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+    pso_desc.SampleMask = UINT_MAX;
+    
     pso_desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
     pso_desc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-    pso_desc.SampleDesc = { 1, 0 };
+    pso_desc.SampleDesc.Count = m_4_x_msaa_state_ ? 4 : 1;
+    pso_desc.SampleDesc.Quality = m_4_x_msaa_state_ ? (m_4_x_msaa_quality_ - 1) : 0;
     pso_desc.SampleMask = UINT_MAX;
     pso_desc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
     pso_desc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
