@@ -8,6 +8,7 @@
 #include <sdkddkver.h>
 #include <windows.h>
 #include <wrl/client.h>
+#include <d3dcompiler.h>
 
 // Link necessary d3d12 libraries.
 #pragma comment(lib, "d3dcompiler.lib")

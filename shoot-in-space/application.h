@@ -22,6 +22,11 @@ protected:
     void create_command_objects();
     void create_swap_chain();
     void flush_command_queue();
+
+    ID3D12Resource* get_curr_back_buffer() const;
+    D3D12_CPU_DESCRIPTOR_HANDLE get_curr_back_buffer_view() const;
+    D3D12_CPU_DESCRIPTOR_HANDLE get_dsv() const;
+
     
 
 protected:
@@ -36,7 +41,7 @@ protected:
     HWND            m_hwnd_             = nullptr;
     int             m_width_            = 1600;
     int             m_height_           = 900;
-    const wchar_t   class_name_[]       = L"Shoot-in-space";
+    const wchar_t   class_name_[15]       = L"Shoot-in-space";
     LPCWSTR         m_window_name_      = L"Shoot-in-space";
     bool            m_app_paused_       = false;
     bool            m_4_x_msaa_state_   = false;
@@ -55,7 +60,7 @@ protected:
     Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_command_list_;
 
     static constexpr  UINT c_swap_buffer_count  = 2;
-    UINT m_current_buffer_                      = 0;
+    UINT m_curr_back_buffer_                      = 0;
     Microsoft::WRL::ComPtr<ID3D12Resource> m_swap_chain_buffer_[c_swap_buffer_count];
     Microsoft::WRL::ComPtr<ID3D12Resource> m_depth_stencil_buffer_;
 
@@ -71,4 +76,6 @@ protected:
     DXGI_FORMAT m_depth_stencil_format_ = DXGI_FORMAT_D24_UNORM_S8_UINT;
 
     timer m_timer_;
+
+    Microsoft::WRL::ComPtr<ID3DBlob> compiler_shaders(const WCHAR* filename, const char* entry_point, const char* targer);
 };

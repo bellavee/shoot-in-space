@@ -176,6 +176,66 @@ void application::create_swap_chain()
         m_swap_chain_.GetAddressOf()));
 }
 
+void application::flush_command_queue()
+{
+    m_current_fence_++;
+    dx::throw_if_failed(m_command_queue_->Signal(m_fence_.Get(), m_current_fence_));
+
+    if (m_fence_->GetCompletedValue() < m_current_fence_)
+    {
+        HANDLE event_handle = CreateEventEx(nullptr, nullptr, 0, EVENT_ALL_ACCESS);
+        dx::throw_if_failed(m_fence_->SetEventOnCompletion(m_current_fence_, event_handle));
+
+        WaitForSingleObject(event_handle, INFINITE);
+        CloseHandle(event_handle);
+    }
+}
+
+ID3D12Resource* application::get_curr_back_buffer() const
+{
+    return m_swap_chain_buffer_[m_curr_back_buffer_].Get();
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE application::get_curr_back_buffer_view() const
+{
+    return CD3DX12_CPU_DESCRIPTOR_HANDLE(m_rtv_heap_->GetCPUDescriptorHandleForHeapStart(), m_curr_back_buffer_, m_rtv_descriptor_size_);
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE application::get_dsv() const
+{
+    return m_dsv_heap_->GetCPUDescriptorHandleForHeapStart();
+}
+
+Microsoft::WRL::ComPtr<ID3DBlob> application::compiler_shaders(const WCHAR* filename, const char* entry_point, const char* targer)
+{
+    UINT compile_flags = 0;
+    ComPtr<ID3DBlob> bytecode;
+    ComPtr<ID3DBlob> errors;
+
+    HRESULT hr = D3DCompileFromFile(
+        filename,
+        nullptr,
+        nullptr,
+        entry_point,
+        targer,
+        compile_flags,
+        0,
+        &bytecode,
+        &errors
+        );
+
+    if (errors != nullptr) OutputDebugStringA(static_cast<char*>(errors->GetBufferPointer()));
+
+    if (FAILED(hr)) throw std::runtime_error("Failed to compile shader.");
+
+    return bytecode;
+}
+
+
+
+
+
+
 
 
 
