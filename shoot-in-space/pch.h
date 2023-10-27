@@ -7,8 +7,11 @@
 
 #include <sdkddkver.h>
 #include <windows.h>
-#include <wrl/client.h>
 #include <d3dcompiler.h>
+#include <string>
+#include <wrl.h>
+#include <shellapi.h>
+
 
 // Link necessary d3d12 libraries.
 #pragma comment(lib, "d3dcompiler.lib")
@@ -19,8 +22,7 @@
 
 #include <d3d12.h>
 #include "d3dx12.h"
-
-#include <dxgi1_4.h>
+#include <dxgi1_6.h>
 
 #include <DirectXMath.h>
 #include <DirectXColors.h>
@@ -38,7 +40,8 @@
 #include <system_error>
 #include <tuple>
 
-namespace dx
+
+namespace DX
 {
     inline void throw_if_failed(HRESULT hr)
     {
@@ -49,3 +52,9 @@ namespace dx
         }
     }
 }
+
+struct Vertex
+{
+    DirectX::XMFLOAT3 position;
+    DirectX::XMFLOAT4 color;
+};
