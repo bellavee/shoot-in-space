@@ -255,14 +255,23 @@ void Game::PopulateCommandList()
     ThrowIfFailed(m_commandAllocator->Reset());
     ThrowIfFailed(m_commandList->Reset(m_commandAllocator.Get(), m_pipelineState.Get()));
 
+    m_commandList->SetGraphicsRootSignature(m_rootSignature.Get());
+    m_commandList->RSSetViewports(1, &m_viewport);
+    m_commandList->RSSetScissorRects(1, &m_scissorRect);
+
+
     const CD3DX12_RESOURCE_BARRIER prevBarrier = CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
     m_commandList->ResourceBarrier(1, &prevBarrier);
 
     CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), m_frameIndex, m_rtvDescriptorSize);
+    m_commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 
     const float clearColor[] = { 0.6f, 0.8f, 1.0f, 1.0f };
     m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-
+    m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
+    m_commandList->DrawInstanced(3, 1, 0, 0);
+    
     const CD3DX12_RESOURCE_BARRIER nextBarrier = CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
     m_commandList->ResourceBarrier(1, &nextBarrier);
 
