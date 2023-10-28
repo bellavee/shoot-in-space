@@ -1,11 +1,11 @@
 #pragma once
 
-#include "Application.h"
+#include "Manager.h"
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
 
-class Game : public Application
+class Game : public Manager
 {
 public:
     Game(UINT width, UINT height, std::wstring name);

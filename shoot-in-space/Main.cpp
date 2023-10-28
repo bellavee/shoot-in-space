@@ -1,7 +1,7 @@
 
-#include "Game.h"
-#include "pch.h"
-#include "Window.h"
+#include "Graphics/Game.h"
+#include "Utils/pch.h"
+#include "Window/Window.h"
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 {

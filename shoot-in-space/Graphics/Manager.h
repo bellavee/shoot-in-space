@@ -1,13 +1,12 @@
 ﻿#pragma once
 
-#include "pch.h"
-#include "Timer.h"
+#include "../Utils/pch.h"
 
-class Application
+class Manager
 {
 public:
-    Application(UINT width, UINT height, std::wstring name);
-    virtual ~Application();
+    Manager(UINT width, UINT height, std::wstring name);
+    virtual ~Manager();
 
     virtual void OnInit() = 0;
     virtual void OnUpdate() = 0;

@@ -1,10 +1,10 @@
 ﻿
-#include "Application.h"
+#include "Manager.h"
 
 using Microsoft::WRL::ComPtr;
 
 
-Application::Application(UINT width, UINT height, std::wstring name)
+Manager::Manager(UINT width, UINT height, std::wstring name)
 {
     m_width = width;
     m_height = height;
@@ -13,14 +13,14 @@ Application::Application(UINT width, UINT height, std::wstring name)
     m_aspectRatio = static_cast<float>(width) / static_cast<float>(height);
 }
 
-Application::~Application() {}
+Manager::~Manager() {}
 
-std::wstring Application::GetAssetFullPath(LPCWSTR assetName)
+std::wstring Manager::GetAssetFullPath(LPCWSTR assetName)
 {
     return m_assetsPath + assetName;
 }
 
-void Application::GetHardwareAdapter(
+void Manager::GetHardwareAdapter(
     IDXGIFactory1* pFactory,
     IDXGIAdapter1** ppAdapter,
     bool requestHighPerformanceAdapter)

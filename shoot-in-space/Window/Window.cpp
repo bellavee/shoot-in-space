@@ -1,9 +1,9 @@
 ﻿#include "Window.h"
-#include "pch.h"
+#include "../Utils/pch.h"
 
 HWND Window::m_hwnd = nullptr;
 
-int Window::Run(Application* pApp, HINSTANCE hInstance, int nCmdShow)
+int Window::Run(Manager* pAppManager, HINSTANCE hInstance, int nCmdShow)
 {
     WNDCLASSEX windowClass = { 0 };
     windowClass.cbSize          = sizeof(WNDCLASSEX);
@@ -15,13 +15,13 @@ int Window::Run(Application* pApp, HINSTANCE hInstance, int nCmdShow)
     RegisterClassEx(&windowClass);
     
     RECT windowRect = { 0, 0,
-        static_cast<LONG>(pApp->GetWidth()),
-        static_cast<LONG>(pApp->GetHeight()) };
+        static_cast<LONG>(pAppManager->GetWidth()),
+        static_cast<LONG>(pAppManager->GetHeight()) };
     AdjustWindowRect(&windowRect, WS_OVERLAPPEDWINDOW, FALSE);
 
     m_hwnd = CreateWindow(
         windowClass.lpszClassName,
-        pApp->GetTitle(),
+        pAppManager->GetTitle(),
         WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT,
         CW_USEDEFAULT,
@@ -30,9 +30,9 @@ int Window::Run(Application* pApp, HINSTANCE hInstance, int nCmdShow)
         nullptr,
         nullptr,
         hInstance,
-        pApp);
+        pAppManager);
 
-    pApp->OnInit();
+    pAppManager->OnInit();
     ShowWindow(m_hwnd, nCmdShow);
 
     MSG msg = {};
@@ -45,14 +45,14 @@ int Window::Run(Application* pApp, HINSTANCE hInstance, int nCmdShow)
         }
     }
 
-    pApp->OnDestroy();
+    pAppManager->OnDestroy();
 
     return static_cast<char>(msg.wParam);
 }
 
 LRESULT CALLBACK Window::WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-    Application* pApp = reinterpret_cast<Application*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
+    Manager* pAppManager = reinterpret_cast<Manager*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
 
     switch (message)
     {
@@ -64,24 +64,24 @@ LRESULT CALLBACK Window::WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPAR
         return 0;
 
     case WM_KEYDOWN:
-        if (pApp)
+        if (pAppManager)
         {
-            pApp->OnKeyDown(static_cast<UINT8>(wParam));
+            pAppManager->OnKeyDown(static_cast<UINT8>(wParam));
         }
         return 0;
 
     case WM_KEYUP:
-        if (pApp)
+        if (pAppManager)
         {
-            pApp->OnKeyUp(static_cast<UINT8>(wParam));
+            pAppManager->OnKeyUp(static_cast<UINT8>(wParam));
         }
         return 0;
 
     case WM_PAINT:
-        if (pApp)
+        if (pAppManager)
         {
-            pApp->OnUpdate();
-            pApp->OnRender();
+            pAppManager->OnUpdate();
+            pAppManager->OnRender();
         }
         return 0;
 

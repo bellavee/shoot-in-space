@@ -1,12 +1,12 @@
 ﻿#pragma once
-#include "Application.h"
+#include "../Graphics/Manager.h"
 
-class Application;
+class Manager;
 
 class Window
 {
 public:
-    static int Run(Application* pApp, HINSTANCE hInstance, int nCmdShow);
+    static int Run(Manager* pAppManager, HINSTANCE hInstance, int nCmdShow);
     static HWND GetHwnd() { return m_hwnd; }
 
 protected:
