@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Manager.h"
+#include "Mesh.h"
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
@@ -16,13 +17,7 @@ public:
 
 private:
     static const UINT FrameCount = 2;
-
-    struct Vertex
-    {
-        XMFLOAT3 position;
-        XMFLOAT4 color;
-    };
-
+    
     // Pipeline objects.
     CD3DX12_VIEWPORT m_viewport;
     CD3DX12_RECT m_scissorRect;
@@ -46,10 +41,19 @@ private:
     HANDLE m_fenceEvent;
     ComPtr<ID3D12Fence> m_fence;
     UINT64 m_fenceValue;
-
+    
     void LoadPipeline();
     void LoadAssets();
     void PopulateCommandList();
     void WaitForPreviousFrame();
+
+    void CreateRootSignature();
+    void CreateShadersAndPSO();
+    void CreateCommandList();
+    void CreateDescriptorHeaps();
+    void CreateFrameResources();
+    void CreateSyncObjects();
+
+    Mesh m_mesh;
     
 };
