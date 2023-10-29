@@ -18,9 +18,16 @@ Game::Game(UINT width, UINT height, std::wstring name) :
 
 void Game::OnInit()
 {
+    Vertex triangleVertices[] =
+            {
+        { { 0.0f, 0.25f * m_aspectRatio, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },
+        { { 0.25f, -0.25f * m_aspectRatio, 0.0f }, { 0.0f, 1.0f, 0.0f, 1.0f } },
+        { { -0.25f, -0.25f * m_aspectRatio, 0.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } }
+            };
+    
     LoadPipeline();
     LoadAssets();
-    m_mesh.Initialize(m_aspectRatio, m_device.Get());
+    m_mesh.Initialize(triangleVertices, 3, m_device.Get());
 }
 
 void Game::OnUpdate(double deltaTime)

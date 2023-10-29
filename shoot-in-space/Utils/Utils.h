@@ -5,6 +5,7 @@
 #include "pch.h"
 
 using Microsoft::WRL::ComPtr;
+using namespace DirectX;
 
 inline std::string HrToString(HRESULT hr)
 {
@@ -29,3 +30,9 @@ inline void ThrowIfFailed(HRESULT hr)
         throw HrException(hr);
     }
 }
+
+struct Vertex
+{
+    XMFLOAT3 position;
+    XMFLOAT4 color;
+};
