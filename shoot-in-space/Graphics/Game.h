@@ -11,7 +11,7 @@ class Game : public Manager
 public:
     Game(UINT width, UINT height, std::wstring name);
     virtual void OnInit();
-    virtual void OnUpdate(double deltaTime);
+    virtual void OnUpdate();
     virtual void OnRender();
     virtual void OnDestroy();
 
@@ -28,6 +28,7 @@ private:
     ComPtr<ID3D12CommandQueue> m_commandQueue;
     ComPtr<ID3D12RootSignature> m_rootSignature;
     ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
+    ComPtr<ID3D12DescriptorHeap> m_cbvHeap;
     ComPtr<ID3D12PipelineState> m_pipelineState;
     ComPtr<ID3D12GraphicsCommandList> m_commandList;
     UINT m_rtvDescriptorSize;
@@ -35,6 +36,9 @@ private:
     // App resources.
     ComPtr<ID3D12Resource> m_vertexBuffer;
     D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
+    ComPtr<ID3D12Resource> m_constantBuffer;
+    SceneConstantBuffer m_constantBufferData;
+    UINT8* m_pCbvDataBegin;
 
     // Synchronization objects.
     UINT m_frameIndex;
@@ -50,9 +54,11 @@ private:
     void CreateRootSignature();
     void CreateShadersAndPSO();
     void CreateCommandList();
+    void CreateMesh();
     void CreateDescriptorHeaps();
     void CreateFrameResources();
     void CreateSyncObjects();
+    void CreateConstantBuffer();
 
     Mesh m_mesh;
     
