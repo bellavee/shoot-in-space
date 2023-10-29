@@ -11,7 +11,7 @@ class Game : public Manager
 public:
     Game(UINT width, UINT height, std::wstring name);
     virtual void OnInit();
-    virtual void OnUpdate();
+    virtual void OnUpdate(double deltaTime);
     virtual void OnRender();
     virtual void OnDestroy();
 

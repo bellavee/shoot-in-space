@@ -14,5 +14,8 @@ protected:
     
 private:
     static HWND m_hwnd;
+    static LARGE_INTEGER m_frequency;
+    static LARGE_INTEGER m_lastTime;
+    static double m_deltaTime;
     
 };

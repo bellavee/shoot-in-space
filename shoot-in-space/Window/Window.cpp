@@ -2,6 +2,9 @@
 #include "../Utils/pch.h"
 
 HWND Window::m_hwnd = nullptr;
+LARGE_INTEGER Window::m_frequency;
+LARGE_INTEGER Window::m_lastTime;
+double Window::m_deltaTime = 0.0;
 
 int Window::Run(Manager* pAppManager, HINSTANCE hInstance, int nCmdShow)
 {
@@ -35,9 +38,17 @@ int Window::Run(Manager* pAppManager, HINSTANCE hInstance, int nCmdShow)
     pAppManager->OnInit();
     ShowWindow(m_hwnd, nCmdShow);
 
+    QueryPerformanceFrequency(&m_frequency);
+    QueryPerformanceCounter(&m_lastTime);
+    
     MSG msg = {};
     while (msg.message != WM_QUIT)
     {
+        LARGE_INTEGER currentTime;
+        QueryPerformanceCounter(&currentTime);
+        m_deltaTime = static_cast<double>(currentTime.QuadPart - m_lastTime.QuadPart) / static_cast<double>(m_frequency.QuadPart);
+        m_lastTime = currentTime;
+        
         if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
         {
             TranslateMessage(&msg);
@@ -80,7 +91,7 @@ LRESULT CALLBACK Window::WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPAR
     case WM_PAINT:
         if (pAppManager)
         {
-            pAppManager->OnUpdate();
+            pAppManager->OnUpdate(m_deltaTime);
             pAppManager->OnRender();
         }
         return 0;

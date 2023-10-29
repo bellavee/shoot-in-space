@@ -23,7 +23,7 @@ void Game::OnInit()
     m_mesh.Initialize(m_aspectRatio, m_device.Get());
 }
 
-void Game::OnUpdate()
+void Game::OnUpdate(double deltaTime)
 {
     
 }
