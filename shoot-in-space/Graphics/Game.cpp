@@ -10,11 +10,9 @@ using namespace DirectX;
 Game::Game(UINT width, UINT height, std::wstring name) :
     Manager(width, height, name),
     m_frameIndex(0),
-    m_pCbvDataBegin(nullptr),
     m_viewport(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height)),
     m_scissorRect(0, 0, static_cast<LONG>(width), static_cast<LONG>(height)),
-    m_rtvDescriptorSize(0),
-    m_constantBufferData{}
+    m_rtvDescriptorSize(0)
 {
 }
 
@@ -27,14 +25,19 @@ void Game::OnInit()
 void Game::OnUpdate()
 {
     const float translationSpeed = 0.003f;
-    const float offsetBounds = 1.25f;
+    const float offsetBounds = 0.25f;
 
-    m_constantBufferData.offset.x += translationSpeed;
-    if (m_constantBufferData.offset.x > offsetBounds)
-    {
-        m_constantBufferData.offset.x = -offsetBounds;
+    static float direction = 1.0f;  
+    
+    RenderAllMeshes();
+    
+    newMesh->constantBufferData.offset.x += translationSpeed * direction;
+    if (abs(newMesh->constantBufferData.offset.x) > offsetBounds) {
+        direction = -direction;  
+        newMesh->constantBufferData.offset.x += translationSpeed * direction;  
     }
-    memcpy(m_pCbvDataBegin, &m_constantBufferData, sizeof(m_constantBufferData));
+    
+    memcpy(newMesh->pCbvDataBegin, &newMesh->constantBufferData, sizeof(newMesh->constantBufferData));
 }
 
 void Game::OnRender()
@@ -59,7 +62,8 @@ void Game::LoadAssets()
     CreateRootSignature();
     CreateShadersAndPSO();
     CreateCommandList();
-    CreateMesh();
+    newMesh = CreateMesh();
+    newMesh1 = CreateMesh();
     CreateConstantBuffer();
     CreateSyncObjects();
 }
@@ -155,10 +159,8 @@ void Game::PopulateCommandList()
     const float clearColor[] = { 0.6f, 0.8f, 1.0f, 1.0f };
     m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
     m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
-    m_commandList->IASetIndexBuffer(&m_indexBufferView);
-    m_commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
-    
+
+    RenderAllMeshes();
     
     const CD3DX12_RESOURCE_BARRIER presentBackBuffer = CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
     m_commandList->ResourceBarrier(1, &presentBackBuffer);
@@ -262,73 +264,6 @@ void Game::CreateCommandList()
     ThrowIfFailed(m_commandList->Close());
 }
 
-void Game::CreateMesh()
-{
-    // Define the geometry for a triangle.
-    Vertex vertices[] =
-    {
-        { { -0.25f, 0.25f * m_aspectRatio, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },  // Top-left vertex
-        { { 0.25f, 0.25f * m_aspectRatio, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },   // Top-right vertex
-        { { 0.25f, -0.25f * m_aspectRatio, 0.0f }, { 0.0f, 1.0f, 0.0f, 1.0f } },  // Bottom-right vertex
-        { { -0.25f, -0.25f * m_aspectRatio, 0.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } }  // Bottom-left vertex
-    };
-
-    UINT indices[] =
-        {
-        0, 1, 2,  // First triangle
-        0, 2, 3   // Second triangle
-    };
-    
-    const UINT indexBufferSize = sizeof(indices);
-    CD3DX12_HEAP_PROPERTIES indexHeapProperties(D3D12_HEAP_TYPE_UPLOAD);
-    CD3DX12_RESOURCE_DESC indexBufferDesc = CD3DX12_RESOURCE_DESC::Buffer(indexBufferSize);
-
-    ThrowIfFailed(m_device->CreateCommittedResource(
-        &indexHeapProperties,
-        D3D12_HEAP_FLAG_NONE,
-        &indexBufferDesc,
-        D3D12_RESOURCE_STATE_GENERIC_READ,
-        nullptr,
-        IID_PPV_ARGS(&m_indexBuffer)));
-
-    // Copy the index data to the index buffer.
-    UINT8* pIndexDataBegin;
-    CD3DX12_RANGE indexReadRange(0, 0);  // We do not intend to read from this resource on the CPU.
-    ThrowIfFailed(m_indexBuffer->Map(0, &indexReadRange, reinterpret_cast<void**>(&pIndexDataBegin)));
-    memcpy(pIndexDataBegin, indices, sizeof(indices));
-    m_indexBuffer->Unmap(0, nullptr);
-
-    // Initialize the index buffer view.
-    m_indexBufferView.BufferLocation = m_indexBuffer->GetGPUVirtualAddress();
-    m_indexBufferView.SizeInBytes = indexBufferSize;
-    m_indexBufferView.Format = DXGI_FORMAT_R32_UINT;
-    
-    const UINT vertexBufferSize = sizeof(vertices);
-    CD3DX12_HEAP_PROPERTIES heapProperties(D3D12_HEAP_TYPE_UPLOAD);
-    CD3DX12_RESOURCE_DESC bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize);
-
-    ThrowIfFailed(m_device->CreateCommittedResource(
-        &heapProperties,
-        D3D12_HEAP_FLAG_NONE,
-        &bufferDesc,
-        D3D12_RESOURCE_STATE_GENERIC_READ,
-        nullptr,
-        IID_PPV_ARGS(&m_vertexBuffer)));
-        
-    // Copy the triangle data to the vertex buffer.
-    UINT8* pVertexDataBegin;
-    CD3DX12_RANGE readRange(0, 0);        // We do not intend to read from this resource on the CPU.
-    ThrowIfFailed(m_vertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin)));
-    memcpy(pVertexDataBegin, vertices, sizeof(vertices));
-    m_vertexBuffer->Unmap(0, nullptr);
-
-    // Initialize the vertex buffer view.
-    m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
-    m_vertexBufferView.StrideInBytes = sizeof(Vertex);
-    m_vertexBufferView.SizeInBytes = vertexBufferSize;
-}
-
-
 void Game::CreateDescriptorHeaps()
 {
     D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
@@ -370,29 +305,68 @@ void Game::CreateSyncObjects()
     WaitForPreviousFrame();
 }
 
-void Game::CreateConstantBuffer()
+MeshData* Game::CreateMesh()
 {
-    const UINT constantBufferSize = sizeof(SceneConstantBuffer); 
+    MeshData* mesh = new MeshData();    
+    Vertex vertices[] =
+    {
+        { { -0.1f, 0.1f * m_aspectRatio, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },  // Top-left vertex
+        { { 0.1f, 0.1f * m_aspectRatio, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },   // Top-right vertex
+        { { 0.1f, -0.1f * m_aspectRatio, 0.0f }, { 0.0f, 1.0f, 0.0f, 1.0f } },  // Bottom-right vertex
+        { { -0.1f, -0.1f * m_aspectRatio, 0.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } }  // Bottom-left vertex
+    };
 
-    CD3DX12_HEAP_PROPERTIES heapProperties(D3D12_HEAP_TYPE_UPLOAD);
-    CD3DX12_RESOURCE_DESC bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(constantBufferSize);
+    UINT indices[] =
+        {
+        0, 1, 2,  // First triangle
+        0, 2, 3   // Second triangle
+    };
+        
+    mesh->indexBuffer = CreateBuffer<UINT>(m_device, _countof(indices));
+    CopyDataToBuffer(mesh->indexBuffer, indices, sizeof(indices));
+    mesh->indexBufferView.BufferLocation = mesh->indexBuffer->GetGPUVirtualAddress();
+    mesh->indexBufferView.SizeInBytes = sizeof(indices);
+    mesh->indexBufferView.Format = DXGI_FORMAT_R32_UINT;
 
-    ThrowIfFailed(m_device->CreateCommittedResource(
-        &heapProperties,
-        D3D12_HEAP_FLAG_NONE,
-        &bufferDesc,
-        D3D12_RESOURCE_STATE_GENERIC_READ,
-        nullptr,
-        IID_PPV_ARGS(&m_constantBuffer)));
+    mesh->vertexBuffer = CreateBuffer<Vertex>(m_device, _countof(vertices));
+    CopyDataToBuffer(mesh->vertexBuffer, vertices, sizeof(vertices));
+    mesh->vertexBufferView.BufferLocation = mesh->vertexBuffer->GetGPUVirtualAddress();
+    mesh->vertexBufferView.StrideInBytes = sizeof(Vertex);
+    mesh->vertexBufferView.SizeInBytes = sizeof(vertices);
 
 
-    D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
-    cbvDesc.BufferLocation = m_constantBuffer->GetGPUVirtualAddress();
-    cbvDesc.SizeInBytes = constantBufferSize;
-    m_device->CreateConstantBufferView(&cbvDesc, m_cbvHeap->GetCPUDescriptorHandleForHeapStart());
-    
-    CD3DX12_RANGE readRange(0, 0);
-    ThrowIfFailed(m_constantBuffer->Map(0, &readRange, reinterpret_cast<void**>(&m_pCbvDataBegin)));
-    memcpy(m_pCbvDataBegin, &m_constantBufferData, sizeof(m_constantBufferData));
+    m_meshes.push_back(mesh);
+    return m_meshes.back();
 }
 
+void Game::CreateConstantBuffer()
+{
+    for (MeshData* mesh : m_meshes)
+    {
+        mesh->constantBuffer = CreateBuffer<SceneConstantBuffer>(m_device, 1);
+
+        D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
+        cbvDesc.BufferLocation = mesh->constantBuffer->GetGPUVirtualAddress();
+        cbvDesc.SizeInBytes = AlignTo256(sizeof(SceneConstantBuffer));
+        m_device->CreateConstantBufferView(&cbvDesc, m_cbvHeap->GetCPUDescriptorHandleForHeapStart());
+
+        CD3DX12_RANGE readRange(0, 0);
+        ThrowIfFailed(mesh->constantBuffer->Map(0, &readRange, &mesh->pCbvDataBegin));
+        memcpy(mesh->pCbvDataBegin, &mesh->constantBufferData, sizeof(mesh->constantBufferData));
+    }
+}
+
+void Game::RenderMesh(const MeshData* mesh)
+{
+    m_commandList->IASetVertexBuffers(0, 1, &mesh->vertexBufferView);
+    m_commandList->IASetIndexBuffer(&mesh->indexBufferView);
+    m_commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
+}
+
+void Game::RenderAllMeshes()
+{
+    for (const MeshData* mesh : m_meshes)
+    {
+        RenderMesh(mesh);
+    }
+}

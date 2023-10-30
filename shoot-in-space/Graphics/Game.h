@@ -16,6 +16,11 @@ public:
     virtual void OnDestroy();
 
 private:
+    
+    std::vector<MeshData*> m_meshes;
+    
+
+    
     static const UINT FrameCount = 2;
     
     // Pipeline objects.
@@ -32,15 +37,7 @@ private:
     ComPtr<ID3D12PipelineState> m_pipelineState;
     ComPtr<ID3D12GraphicsCommandList> m_commandList;
     UINT m_rtvDescriptorSize;
-
-    // App resources.
-    ComPtr<ID3D12Resource> m_vertexBuffer;
-    D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
-    ComPtr<ID3D12Resource> m_indexBuffer;
-    D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
-    ComPtr<ID3D12Resource> m_constantBuffer;
-    SceneConstantBuffer m_constantBufferData;
-    UINT8* m_pCbvDataBegin;
+    
 
     // Synchronization objects.
     UINT m_frameIndex;
@@ -56,12 +53,16 @@ private:
     void CreateRootSignature();
     void CreateShadersAndPSO();
     void CreateCommandList();
-    void CreateMesh();
+    MeshData* CreateMesh();
     void CreateDescriptorHeaps();
     void CreateFrameResources();
     void CreateSyncObjects();
     void CreateConstantBuffer();
 
-    Mesh m_mesh;
-    
+    void RenderMesh(const MeshData* mesh);
+    void RenderAllMeshes();
+
+    MeshData* newMesh;
+    MeshData* newMesh1;
+
 };

@@ -2,6 +2,7 @@
 
 cbuffer SceneConstantBuffer : register(b0)
 {
+    matrix transformationMatrix;
     float4 offset;
     float4 padding[15];
 };
