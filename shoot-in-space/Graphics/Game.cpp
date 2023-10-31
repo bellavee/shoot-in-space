@@ -1,8 +1,8 @@
 
 #include "../Utils/pch.h"
-#include "../Utils/Utils.h"
 #include "Game.h"
 #include "../Window/Window.h"
+#include "../test/GeometryGenerator.h"
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
@@ -265,21 +265,9 @@ void Game::CreateCommandList()
 void Game::CreateMesh()
 {
     // Define the geometry for a triangle.
-    Vertex vertices[] =
-    {
-        { { -0.25f, 0.25f * m_aspectRatio, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },  // Top-left vertex
-        { { 0.25f, 0.25f * m_aspectRatio, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },   // Top-right vertex
-        { { 0.25f, -0.25f * m_aspectRatio, 0.0f }, { 0.0f, 1.0f, 0.0f, 1.0f } },  // Bottom-right vertex
-        { { -0.25f, -0.25f * m_aspectRatio, 0.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } }  // Bottom-left vertex
-    };
-
-    UINT indices[] =
-        {
-        0, 1, 2,  // First triangle
-        0, 2, 3   // Second triangle
-    };
+    MeshData mesh = GeometryGenerator::CreateBox(2, 2, 2, 1);
     
-    const UINT indexBufferSize = sizeof(indices);
+    const UINT indexBufferSize = mesh.Indices.size();
     CD3DX12_HEAP_PROPERTIES indexHeapProperties(D3D12_HEAP_TYPE_UPLOAD);
     CD3DX12_RESOURCE_DESC indexBufferDesc = CD3DX12_RESOURCE_DESC::Buffer(indexBufferSize);
 
@@ -295,7 +283,7 @@ void Game::CreateMesh()
     UINT8* pIndexDataBegin;
     CD3DX12_RANGE indexReadRange(0, 0);  // We do not intend to read from this resource on the CPU.
     ThrowIfFailed(m_indexBuffer->Map(0, &indexReadRange, reinterpret_cast<void**>(&pIndexDataBegin)));
-    memcpy(pIndexDataBegin, indices, sizeof(indices));
+    memcpy(pIndexDataBegin, &mesh.Indices, mesh.Indices.size());
     m_indexBuffer->Unmap(0, nullptr);
 
     // Initialize the index buffer view.
@@ -303,7 +291,7 @@ void Game::CreateMesh()
     m_indexBufferView.SizeInBytes = indexBufferSize;
     m_indexBufferView.Format = DXGI_FORMAT_R32_UINT;
     
-    const UINT vertexBufferSize = sizeof(vertices);
+    const UINT vertexBufferSize = mesh.Vertices.size();
     CD3DX12_HEAP_PROPERTIES heapProperties(D3D12_HEAP_TYPE_UPLOAD);
     CD3DX12_RESOURCE_DESC bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize);
 
@@ -319,7 +307,7 @@ void Game::CreateMesh()
     UINT8* pVertexDataBegin;
     CD3DX12_RANGE readRange(0, 0);        // We do not intend to read from this resource on the CPU.
     ThrowIfFailed(m_vertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin)));
-    memcpy(pVertexDataBegin, vertices, sizeof(vertices));
+    memcpy(pVertexDataBegin, &mesh.Vertices, mesh.Vertices.size());
     m_vertexBuffer->Unmap(0, nullptr);
 
     // Initialize the vertex buffer view.

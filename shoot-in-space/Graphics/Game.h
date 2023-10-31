@@ -61,7 +61,4 @@ private:
     void CreateFrameResources();
     void CreateSyncObjects();
     void CreateConstantBuffer();
-
-    Mesh m_mesh;
-    
 };

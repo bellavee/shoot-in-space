@@ -81,6 +81,7 @@
     <ClInclude Include="Graphics\Manager.h" />
     <ClInclude Include="Graphics\Game.h" />
     <ClInclude Include="Graphics\Mesh.h" />
+    <ClInclude Include="test\GeometryGenerator.h" />
     <ClInclude Include="Utils\d3dx12.h" />
     <ClInclude Include="Utils\pch.h" />
     <ClInclude Include="Utils\Utils.h" />
@@ -237,6 +238,7 @@
     </ClCompile>
     <ClCompile Include="Graphics\Mesh.cpp" />
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="test\GeometryGenerator.cpp" />
     <ClCompile Include="Utils\pch.cpp">
       <RuntimeLibrary>MultiThreadedDebugDll</RuntimeLibrary>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
