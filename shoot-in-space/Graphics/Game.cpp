@@ -25,20 +25,34 @@ void Game::OnInit()
 void Game::OnUpdate()
 {
     const float translationSpeed = 0.003f;
-    const float offsetBounds = 0.25f;
+    const float offsetBounds = 0.5f;
 
-    static float direction = 1.0f;  
-    
+    static float direction = 1.0f; 
+
     RenderAllMeshes();
-    
+
     newMesh->constantBufferData.offset.x += translationSpeed * direction;
     if (abs(newMesh->constantBufferData.offset.x) > offsetBounds) {
         direction = -direction;  
         newMesh->constantBufferData.offset.x += translationSpeed * direction;  
     }
+
+    // newMesh1->constantBufferData.offset.x += translationSpeed * direction;
+    // if (abs(newMesh1->constantBufferData.offset.x) > offsetBounds) {
+    //     direction = -direction;  
+    //     newMesh1->constantBufferData.offset.x += translationSpeed * direction;  
+    // }
+    //
+    newMesh1->constantBufferData.offset.y += translationSpeed * direction;
+    if (abs(newMesh1->constantBufferData.offset.y) > offsetBounds) {
+        direction = -direction;  
+        newMesh1->constantBufferData.offset.y += translationSpeed * direction;  
+    }
     
-    memcpy(newMesh->pCbvDataBegin, &newMesh->constantBufferData, sizeof(newMesh->constantBufferData));
+    CopyMemory(newMesh->pCbvDataBegin, &newMesh->constantBufferData, sizeof(newMesh->constantBufferData));
+    CopyMemory(newMesh1->pCbvDataBegin, &newMesh1->constantBufferData, sizeof(newMesh1->constantBufferData));
 }
+
 
 void Game::OnRender()
 {
@@ -64,6 +78,7 @@ void Game::LoadAssets()
     CreateCommandList();
     newMesh = CreateMesh();
     newMesh1 = CreateMesh();
+    newMesh2 = CreateMesh();
     CreateConstantBuffer();
     CreateSyncObjects();
 }
@@ -145,7 +160,8 @@ void Game::PopulateCommandList()
     ID3D12DescriptorHeap* ppHeaps[] = { m_cbvHeap.Get() };
     m_commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 
-    m_commandList->SetGraphicsRootDescriptorTable(0, m_cbvHeap->GetGPUDescriptorHandleForHeapStart());
+    // m_commandList->SetGraphicsRootConstantBufferView(1, mesh->constantBuffer->GetGPUVirtualAddress());
+    // m_commandList->SetGraphicsRootDescriptorTable(0, m_cbvHeap->GetGPUDescriptorHandleForHeapStart());
     m_commandList->RSSetViewports(1, &m_viewport);
     m_commandList->RSSetScissorRects(1, &m_scissorRect);
     
@@ -185,36 +201,19 @@ void Game::WaitForPreviousFrame()
 
 void Game::CreateRootSignature()
 {
-    D3D12_FEATURE_DATA_ROOT_SIGNATURE featureData = {};
+    CD3DX12_ROOT_PARAMETER1 rootParameters[2];
 
-    // This is the highest version the sample supports. If CheckFeatureSupport succeeds, the HighestVersion returned will not be greater than this.
-    featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
-
-    if (FAILED(m_device->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &featureData, sizeof(featureData))))
-    {
-        featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
-    }
-
-    CD3DX12_DESCRIPTOR_RANGE1 ranges[1];
-    CD3DX12_ROOT_PARAMETER1 rootParameters[1];
-
-    ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
-    rootParameters[0].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_VERTEX);
-
-    // Allow input layout and deny uneccessary access to certain pipeline stages.
-    D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags =
-        D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
-        D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
-        D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
-        D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS |
-        D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
+    // ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
+    // rootParameters[0].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_VERTEX);
+    rootParameters[0].InitAsConstantBufferView(0);
+    rootParameters[1].InitAsConstantBufferView(1);
 
     CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc;
-    rootSignatureDesc.Init_1_1(_countof(rootParameters), rootParameters, 0, nullptr, rootSignatureFlags);
+    rootSignatureDesc.Init_1_1(_countof(rootParameters), rootParameters, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
     ComPtr<ID3DBlob> signature;
     ComPtr<ID3DBlob> error;
-    ThrowIfFailed(D3DX12SerializeVersionedRootSignature(&rootSignatureDesc, featureData.HighestVersion, &signature, &error));
+    ThrowIfFailed(D3DX12SerializeVersionedRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error));
     ThrowIfFailed(m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_rootSignature)));
 }
 
@@ -283,8 +282,6 @@ void Game::CreateDescriptorHeaps()
 void Game::CreateFrameResources()
 {
     CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart());
-
-    // Create a RTV for each frame.
     for (UINT n = 0; n < FrameCount; n++)
     {
         ThrowIfFailed(m_swapChain->GetBuffer(n, IID_PPV_ARGS(&m_renderTargets[n])));
@@ -311,8 +308,8 @@ MeshData* Game::CreateMesh()
     Vertex vertices[] =
     {
         { { -0.1f, 0.1f * m_aspectRatio, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },  // Top-left vertex
-        { { 0.1f, 0.1f * m_aspectRatio, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },   // Top-right vertex
-        { { 0.1f, -0.1f * m_aspectRatio, 0.0f }, { 0.0f, 1.0f, 0.0f, 1.0f } },  // Bottom-right vertex
+        { { 0.1f, 0.1f * m_aspectRatio, 0.0f }, { 1.0f, 1.0f, 0.0f, 1.0f } },   // Top-right vertex
+        { { 0.1f, -0.1f * m_aspectRatio, 0.0f }, { 0.0f, 1.0f, 1.0f, 1.0f } },  // Bottom-right vertex
         { { -0.1f, -0.1f * m_aspectRatio, 0.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } }  // Bottom-left vertex
     };
 
@@ -358,6 +355,7 @@ void Game::CreateConstantBuffer()
 
 void Game::RenderMesh(const MeshData* mesh)
 {
+    m_commandList->SetGraphicsRootConstantBufferView(0, mesh->constantBuffer->GetGPUVirtualAddress());
     m_commandList->IASetVertexBuffers(0, 1, &mesh->vertexBufferView);
     m_commandList->IASetIndexBuffer(&mesh->indexBufferView);
     m_commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);

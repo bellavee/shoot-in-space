@@ -77,6 +77,8 @@ ComPtr<ID3D12Resource> CreateBuffer(ComPtr<ID3D12Device> device, UINT itemCount)
     return buffer;
 }
 
+
+
 struct MeshData {
     ComPtr<ID3D12Resource> vertexBuffer;
     ComPtr<ID3D12Resource> indexBuffer;
@@ -85,5 +87,4 @@ struct MeshData {
     ComPtr<ID3D12Resource> constantBuffer;
     SceneConstantBuffer constantBufferData;
     void* pCbvDataBegin = nullptr;
-    
 };

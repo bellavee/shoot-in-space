@@ -64,5 +64,6 @@ private:
 
     MeshData* newMesh;
     MeshData* newMesh1;
+    MeshData* newMesh2;
 
 };
