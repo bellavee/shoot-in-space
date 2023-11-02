@@ -2,6 +2,9 @@
 #include "../Utils/pch.h"
 #include "../Utils/Utils.h"
 #include "Game.h"
+
+#include <random>
+
 #include "../Window/Window.h"
 
 using Microsoft::WRL::ComPtr;
@@ -27,30 +30,20 @@ void Game::OnUpdate()
     const float translationSpeed = 0.003f;
     const float offsetBounds = 0.5f;
 
-    static float direction = 1.0f; 
-
-    RenderAllMeshes();
-
-    newMesh->constantBufferData.offset.x += translationSpeed * direction;
-    if (abs(newMesh->constantBufferData.offset.x) > offsetBounds) {
-        direction = -direction;  
-        newMesh->constantBufferData.offset.x += translationSpeed * direction;  
+    for (MeshData* mesh : m_meshes) {
+        if (mesh->moveDirection) {
+            mesh->constantBufferData.offset.x += translationSpeed * mesh->direction.x;
+            if (fabs(mesh->constantBufferData.offset.x) > offsetBounds) {
+                mesh->direction.x = -mesh->direction.x; 
+            }
+        } else {
+            mesh->constantBufferData.offset.y += translationSpeed * mesh->direction.y;
+            if (fabs(mesh->constantBufferData.offset.y) > offsetBounds) {
+                mesh->direction.y = -mesh->direction.y; 
+            }
+        }
+        CopyMemory(mesh->pCbvDataBegin, &mesh->constantBufferData, sizeof(mesh->constantBufferData));
     }
-
-    // newMesh1->constantBufferData.offset.x += translationSpeed * direction;
-    // if (abs(newMesh1->constantBufferData.offset.x) > offsetBounds) {
-    //     direction = -direction;  
-    //     newMesh1->constantBufferData.offset.x += translationSpeed * direction;  
-    // }
-    //
-    newMesh1->constantBufferData.offset.y += translationSpeed * direction;
-    if (abs(newMesh1->constantBufferData.offset.y) > offsetBounds) {
-        direction = -direction;  
-        newMesh1->constantBufferData.offset.y += translationSpeed * direction;  
-    }
-    
-    CopyMemory(newMesh->pCbvDataBegin, &newMesh->constantBufferData, sizeof(newMesh->constantBufferData));
-    CopyMemory(newMesh1->pCbvDataBegin, &newMesh1->constantBufferData, sizeof(newMesh1->constantBufferData));
 }
 
 
@@ -76,9 +69,7 @@ void Game::LoadAssets()
     CreateRootSignature();
     CreateShadersAndPSO();
     CreateCommandList();
-    newMesh = CreateMesh();
-    newMesh1 = CreateMesh();
-    newMesh2 = CreateMesh();
+    CreateMeshes(5);
     CreateConstantBuffer();
     CreateSyncObjects();
 }
@@ -144,8 +135,32 @@ void Game::LoadPipeline()
     ThrowIfFailed(swapChain.As(&m_swapChain));
     m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
 
-    CreateDescriptorHeaps();
-    CreateFrameResources();
+    // Create descriptor heaps.
+    {
+        D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
+        rtvHeapDesc.NumDescriptors = FrameCount;
+        rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+        rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+        ThrowIfFailed(m_device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&m_rtvHeap)));
+        m_rtvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+
+        D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc = {};
+        cbvHeapDesc.NumDescriptors = 1;
+        cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+        cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+        ThrowIfFailed(m_device->CreateDescriptorHeap(&cbvHeapDesc, IID_PPV_ARGS(&m_cbvHeap)));
+    }
+
+    // Create frame resources.
+    {
+        CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart());
+        for (UINT n = 0; n < FrameCount; n++)
+        {
+            ThrowIfFailed(m_swapChain->GetBuffer(n, IID_PPV_ARGS(&m_renderTargets[n])));
+            m_device->CreateRenderTargetView(m_renderTargets[n].Get(), nullptr, rtvHandle);
+            rtvHandle.Offset(1, m_rtvDescriptorSize);
+        }
+    }
 
     ThrowIfFailed(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_commandAllocator)));
 }
@@ -160,8 +175,6 @@ void Game::PopulateCommandList()
     ID3D12DescriptorHeap* ppHeaps[] = { m_cbvHeap.Get() };
     m_commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 
-    // m_commandList->SetGraphicsRootConstantBufferView(1, mesh->constantBuffer->GetGPUVirtualAddress());
-    // m_commandList->SetGraphicsRootDescriptorTable(0, m_cbvHeap->GetGPUDescriptorHandleForHeapStart());
     m_commandList->RSSetViewports(1, &m_viewport);
     m_commandList->RSSetScissorRects(1, &m_scissorRect);
     
@@ -263,32 +276,6 @@ void Game::CreateCommandList()
     ThrowIfFailed(m_commandList->Close());
 }
 
-void Game::CreateDescriptorHeaps()
-{
-    D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
-    rtvHeapDesc.NumDescriptors = FrameCount;
-    rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-    rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-    ThrowIfFailed(m_device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&m_rtvHeap)));
-    m_rtvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-
-    D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc = {};
-    cbvHeapDesc.NumDescriptors = 1;
-    cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-    cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-    ThrowIfFailed(m_device->CreateDescriptorHeap(&cbvHeapDesc, IID_PPV_ARGS(&m_cbvHeap)));
-}
-
-void Game::CreateFrameResources()
-{
-    CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart());
-    for (UINT n = 0; n < FrameCount; n++)
-    {
-        ThrowIfFailed(m_swapChain->GetBuffer(n, IID_PPV_ARGS(&m_renderTargets[n])));
-        m_device->CreateRenderTargetView(m_renderTargets[n].Get(), nullptr, rtvHandle);
-        rtvHandle.Offset(1, m_rtvDescriptorSize);
-    }
-}
 
 void Game::CreateSyncObjects()
 {
@@ -302,9 +289,11 @@ void Game::CreateSyncObjects()
     WaitForPreviousFrame();
 }
 
-MeshData* Game::CreateMesh()
+void Game::CreateMesh(XMFLOAT3 positionOffset)
 {
-    MeshData* mesh = new MeshData();    
+    MeshData* mesh = new MeshData();
+    float size = 0.1f;
+    
     Vertex vertices[] =
     {
         { { -0.1f, 0.1f * m_aspectRatio, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },  // Top-left vertex
@@ -331,10 +320,34 @@ MeshData* Game::CreateMesh()
     mesh->vertexBufferView.StrideInBytes = sizeof(Vertex);
     mesh->vertexBufferView.SizeInBytes = sizeof(vertices);
 
+    XMMATRIX worldMatrix = XMMatrixTranslation(positionOffset.x, positionOffset.y, positionOffset.z);
+    mesh->constantBufferData.transformationMatrix = XMMatrixTranspose(worldMatrix);
 
+    mesh->moveDirection = (rand() % 2 == 0);
+    float randomSpeed = RandomRange(-1.0f, 1.0f);
+    
+    if (mesh->moveDirection) {
+        mesh->direction = XMFLOAT3(randomSpeed / m_aspectRatio, 0.0f, 0.0f);
+    } else {
+        mesh->direction = XMFLOAT3(0.0f, randomSpeed, 0.0f);
+    }
+    
     m_meshes.push_back(mesh);
-    return m_meshes.back();
 }
+
+void Game::CreateMeshes(int n)
+{
+    std::random_device rd; 
+    std::mt19937 gen(rd()); 
+    std::uniform_real_distribution<> dis(-1.0, 1.0); 
+    
+    for (int i = 0; i < n; i++)
+    {
+        XMFLOAT3 randomPosition = XMFLOAT3(dis(gen), dis(gen), dis(gen)); 
+        CreateMesh(randomPosition);
+    }
+}
+
 
 void Game::CreateConstantBuffer()
 {

@@ -1,5 +1,4 @@
 
-
 cbuffer SceneConstantBuffer : register(b0)
 {
     matrix transformationMatrix;
@@ -17,7 +16,8 @@ PSInput VSMain(float4 position : POSITION, float4 color : COLOR)
 {
     PSInput result;
 
-    result.position = position + offset;
+    result.position = mul(position, transformationMatrix);
+    result.position.xyz += offset.xyz; 
     result.color = color;
 
     return result;

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Manager.h"
-#include "Mesh.h"
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
@@ -16,10 +15,32 @@ public:
     virtual void OnDestroy();
 
 private:
+    struct Vertex
+    {
+        XMFLOAT3 position;
+        XMFLOAT4 color;
+    };
+    
+    struct SceneConstantBuffer
+    {
+        XMMATRIX transformationMatrix;
+        XMFLOAT4 offset;
+        float padding[60]; // Padding so the constant buffer is 256-byte aligned.
+    };
+    
+    struct MeshData {
+        ComPtr<ID3D12Resource> vertexBuffer;
+        ComPtr<ID3D12Resource> indexBuffer;
+        D3D12_VERTEX_BUFFER_VIEW vertexBufferView;
+        D3D12_INDEX_BUFFER_VIEW indexBufferView;
+        ComPtr<ID3D12Resource> constantBuffer;
+        SceneConstantBuffer constantBufferData;
+        void* pCbvDataBegin = nullptr;
+        bool moveDirection;
+        XMFLOAT3 direction;
+    };
     
     std::vector<MeshData*> m_meshes;
-    
-
     
     static const UINT FrameCount = 2;
     
@@ -53,17 +74,13 @@ private:
     void CreateRootSignature();
     void CreateShadersAndPSO();
     void CreateCommandList();
-    MeshData* CreateMesh();
-    void CreateDescriptorHeaps();
-    void CreateFrameResources();
+    void CreateMesh(XMFLOAT3 positionOffset);
+    void CreateMeshes(int n);
     void CreateSyncObjects();
     void CreateConstantBuffer();
 
     void RenderMesh(const MeshData* mesh);
     void RenderAllMeshes();
 
-    MeshData* newMesh;
-    MeshData* newMesh1;
-    MeshData* newMesh2;
 
 };

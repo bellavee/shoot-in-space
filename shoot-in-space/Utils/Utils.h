@@ -31,19 +31,6 @@ inline void ThrowIfFailed(HRESULT hr)
     }
 }
 
-struct Vertex
-{
-    XMFLOAT3 position;
-    XMFLOAT4 color;
-};
-
-struct SceneConstantBuffer
-{
-    XMMATRIX transformationMatrix;
-    XMFLOAT4 offset;
-    float padding[60]; // Padding so the constant buffer is 256-byte aligned.
-};
-
 inline UINT AlignTo256(UINT size) {
     return (size + 255) & ~255;
 }
@@ -77,14 +64,6 @@ ComPtr<ID3D12Resource> CreateBuffer(ComPtr<ID3D12Device> device, UINT itemCount)
     return buffer;
 }
 
-
-
-struct MeshData {
-    ComPtr<ID3D12Resource> vertexBuffer;
-    ComPtr<ID3D12Resource> indexBuffer;
-    D3D12_VERTEX_BUFFER_VIEW vertexBufferView;
-    D3D12_INDEX_BUFFER_VIEW indexBufferView;
-    ComPtr<ID3D12Resource> constantBuffer;
-    SceneConstantBuffer constantBufferData;
-    void* pCbvDataBegin = nullptr;
-};
+inline float RandomRange(float min, float max) {
+    return min + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / (max - min)));
+}
