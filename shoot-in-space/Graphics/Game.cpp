@@ -53,12 +53,12 @@ void Game::OnRender()
     ID3D12CommandList* ppCommandLists[] = { m_commandList.Get() };
     m_commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
     ThrowIfFailed(m_swapChain->Present(1, 0));
-    WaitForPreviousFrame();
+    MoveToNextFrame();
 }
 
 void Game::OnDestroy()
 {
-    WaitForPreviousFrame();
+    WaitForGpu();
     CloseHandle(m_fenceEvent);
 }
 
@@ -197,19 +197,27 @@ void Game::PopulateCommandList()
     ThrowIfFailed(m_commandList->Close());
 }
 
-void Game::WaitForPreviousFrame()
+void Game::WaitForGpu()
 {
-    const UINT64 fence = m_fenceValue;
-    ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), fence));
-    m_fenceValue++;
+    ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), m_fenceValues[m_frameIndex]));
 
-    if (m_fence->GetCompletedValue() < fence)
-    {
-        ThrowIfFailed(m_fence->SetEventOnCompletion(fence, m_fenceEvent));
-        WaitForSingleObject(m_fenceEvent, INFINITE);
-    }
+    ThrowIfFailed(m_fence->SetEventOnCompletion(m_fenceValues[m_frameIndex], m_fenceEvent));
+    WaitForSingleObjectEx(m_fenceEvent, INFINITE, FALSE);
 
+    m_fenceValues[m_frameIndex]++;
+}
+
+void Game::MoveToNextFrame()
+{
+    const UINT64 currentFenceValue = m_fenceValues[m_frameIndex];
+    ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), currentFenceValue));
     m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
+    if (m_fence->GetCompletedValue() < m_fenceValues[m_frameIndex])
+    {
+        ThrowIfFailed(m_fence->SetEventOnCompletion(m_fenceValues[m_frameIndex], m_fenceEvent));
+        WaitForSingleObjectEx(m_fenceEvent, INFINITE, FALSE);
+    }
+    m_fenceValues[m_frameIndex] = currentFenceValue + 1;
 }
 
 void Game::CreateRootSignature()
@@ -279,14 +287,17 @@ void Game::CreateCommandList()
 
 void Game::CreateSyncObjects()
 {
-    ThrowIfFailed(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)));
-    m_fenceValue = 1;
+    ThrowIfFailed(m_device->CreateFence(m_fenceValues[m_frameIndex], D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)));
+    m_fenceValues[m_frameIndex]++;
+
+    // Create an event handle to use for frame synchronization.
     m_fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
     if (m_fenceEvent == nullptr)
     {
         ThrowIfFailed(HRESULT_FROM_WIN32(GetLastError()));
     }
-    WaitForPreviousFrame();
+
+    WaitForGpu();
 }
 
 void Game::CreateMesh(XMFLOAT3 positionOffset)
