@@ -78,14 +78,22 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Graphics\Camera.h" />
+    <ClInclude Include="Graphics\FrameResource.h" />
     <ClInclude Include="Graphics\Manager.h" />
     <ClInclude Include="Graphics\Game.h" />
+    <ClInclude Include="Graphics\Mesh.h" />
+    <ClInclude Include="Graphics\Timer.h" />
     <ClInclude Include="Utils\d3dx12.h" />
+    <ClInclude Include="Utils\MathHelper.h" />
     <ClInclude Include="Utils\pch.h" />
+    <ClInclude Include="Utils\UploadBuffer.h" />
     <ClInclude Include="Utils\Utils.h" />
     <ClInclude Include="Window\Window.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Graphics\Camera.cpp" />
+    <ClCompile Include="Graphics\FrameResource.cpp" />
     <ClCompile Include="Graphics\Manager.cpp">
       <RuntimeLibrary>MultiThreadedDebugDll</RuntimeLibrary>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -234,7 +242,10 @@
       <SDLCheck>true</SDLCheck>
       <LinkCompiled>true</LinkCompiled>
     </ClCompile>
+    <ClCompile Include="Graphics\Mesh.cpp" />
+    <ClCompile Include="Graphics\Timer.cpp" />
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="Utils\MathHelper.cpp" />
     <ClCompile Include="Utils\pch.cpp">
       <RuntimeLibrary>MultiThreadedDebugDll</RuntimeLibrary>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -309,6 +320,7 @@
       <SDLCheck>true</SDLCheck>
       <LinkCompiled>true</LinkCompiled>
     </ClCompile>
+    <ClCompile Include="Utils\UploadBuffer.cpp" />
     <ClCompile Include="Utils\Utils.cpp">
       <RuntimeLibrary>MultiThreadedDebugDll</RuntimeLibrary>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>

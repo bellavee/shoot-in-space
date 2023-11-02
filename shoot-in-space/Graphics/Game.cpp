@@ -21,6 +21,7 @@ Game::Game(UINT width, UINT height, std::wstring name) :
 
 void Game::OnInit()
 {
+    // m_camera.Init({ 8, 8, 30 });
     LoadPipeline();
     LoadAssets();
 }
@@ -29,21 +30,31 @@ void Game::OnUpdate()
 {
     const float translationSpeed = 0.003f;
     const float offsetBounds = 0.5f;
+    
+    UpdateCamera();
 
-    for (MeshData* mesh : m_meshes) {
-        if (mesh->moveDirection) {
-            mesh->constantBufferData.offset.x += translationSpeed * mesh->direction.x;
-            if (fabs(mesh->constantBufferData.offset.x) > offsetBounds) {
-                mesh->direction.x = -mesh->direction.x; 
-            }
-        } else {
-            mesh->constantBufferData.offset.y += translationSpeed * mesh->direction.y;
-            if (fabs(mesh->constantBufferData.offset.y) > offsetBounds) {
-                mesh->direction.y = -mesh->direction.y; 
-            }
-        }
-        CopyMemory(mesh->pCbvDataBegin, &mesh->constantBufferData, sizeof(mesh->constantBufferData));
-    }
+    RenderAllMeshes();
+
+    m_currFrameResourceIndex = (m_currFrameResourceIndex + 1) % 3;
+    m_currFrameResource = m_frameResources[m_currFrameResourceIndex].get();
+    
+    // for (MeshData* mesh : m_meshes) {
+    //     if (mesh->MoveDirection) {
+    //         mesh->ConstantBufferData.Offset.x += translationSpeed * mesh->Direction.x;
+    //         if (fabs(mesh->ConstantBufferData.Offset.x) > offsetBounds) {
+    //             mesh->Direction.x = -mesh->Direction.x; 
+    //         }
+    //     } else {
+    //         mesh->ConstantBufferData.Offset.y += translationSpeed * mesh->Direction.y;
+    //         if (fabs(mesh->ConstantBufferData.Offset.y) > offsetBounds) {
+    //             mesh->Direction.y = -mesh->Direction.y; 
+    //         }
+    //     }
+    //     CopyMemory(mesh->PCbvDataBegin, &mesh->ConstantBufferData, sizeof(mesh->ConstantBufferData));
+    // }
+    //
+    UpdateObjectCbs();
+    UpdateMainPassCb();
 }
 
 
@@ -69,9 +80,10 @@ void Game::LoadAssets()
     CreateRootSignature();
     CreateShadersAndPSO();
     CreateCommandList();
-    CreateMeshes(5);
+    CreateMeshes(6);
     CreateConstantBuffer();
     CreateSyncObjects();
+    CreateFrameResources();
 }
 
 void Game::LoadPipeline()
@@ -151,7 +163,6 @@ void Game::LoadPipeline()
         ThrowIfFailed(m_device->CreateDescriptorHeap(&cbvHeapDesc, IID_PPV_ARGS(&m_cbvHeap)));
     }
 
-    // Create frame resources.
     {
         CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart());
         for (UINT n = 0; n < FrameCount; n++)
@@ -163,38 +174,6 @@ void Game::LoadPipeline()
     }
 
     ThrowIfFailed(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_commandAllocator)));
-}
-
-void Game::PopulateCommandList()
-{
-    ThrowIfFailed(m_commandAllocator->Reset());
-    ThrowIfFailed(m_commandList->Reset(m_commandAllocator.Get(), m_pipelineState.Get()));
-
-    m_commandList->SetGraphicsRootSignature(m_rootSignature.Get());
-
-    ID3D12DescriptorHeap* ppHeaps[] = { m_cbvHeap.Get() };
-    m_commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
-
-    m_commandList->RSSetViewports(1, &m_viewport);
-    m_commandList->RSSetScissorRects(1, &m_scissorRect);
-    
-    const CD3DX12_RESOURCE_BARRIER rtvBackBuffer = CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-    m_commandList->ResourceBarrier(1, &rtvBackBuffer);
-
-    CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), m_frameIndex, m_rtvDescriptorSize);
-    m_commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
-
-    // Render
-    const float clearColor[] = { 0.6f, 0.8f, 1.0f, 1.0f };
-    m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-    m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-    RenderAllMeshes();
-    
-    const CD3DX12_RESOURCE_BARRIER presentBackBuffer = CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
-    m_commandList->ResourceBarrier(1, &presentBackBuffer);
-
-    ThrowIfFailed(m_commandList->Close());
 }
 
 void Game::WaitForGpu()
@@ -284,7 +263,6 @@ void Game::CreateCommandList()
     ThrowIfFailed(m_commandList->Close());
 }
 
-
 void Game::CreateSyncObjects()
 {
     ThrowIfFailed(m_device->CreateFence(m_fenceValues[m_frameIndex], D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)));
@@ -300,48 +278,130 @@ void Game::CreateSyncObjects()
     WaitForGpu();
 }
 
+void Game::PopulateCommandList()
+{
+    ThrowIfFailed(m_commandAllocator->Reset());
+    ThrowIfFailed(m_commandList->Reset(m_commandAllocator.Get(), m_pipelineState.Get()));
+
+    // auto CommandListAlloc = m_currFrameResource->CommandListAlloc;
+    // ThrowIfFailed(CommandListAlloc->Reset());
+    
+    m_commandList->SetGraphicsRootSignature(m_rootSignature.Get());
+    
+    ID3D12DescriptorHeap* ppHeaps[] = { m_cbvHeap.Get() };
+    m_commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
+    m_commandList->RSSetViewports(1, &m_viewport);
+    m_commandList->RSSetScissorRects(1, &m_scissorRect);
+    
+    const CD3DX12_RESOURCE_BARRIER rtvBackBuffer = CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+    m_commandList->ResourceBarrier(1, &rtvBackBuffer);
+
+    CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), m_frameIndex, m_rtvDescriptorSize);
+    m_commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
+
+    // auto passCb = m_currFrameResource->PassCb->Resource();
+    // m_commandList->SetGraphicsRootConstantBufferView(1, passCb->GetGPUVirtualAddress());
+    
+    // Render
+    const float clearColor[] = { 0.6f, 0.8f, 1.0f, 1.0f };
+    m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+    m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+    RenderAllMeshes();
+    
+    const CD3DX12_RESOURCE_BARRIER presentBackBuffer = CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+    m_commandList->ResourceBarrier(1, &presentBackBuffer);
+
+    ThrowIfFailed(m_commandList->Close());
+}
+
+
+// ---------- Initialize Meshes ----------
+
 void Game::CreateMesh(XMFLOAT3 positionOffset)
 {
     MeshData* mesh = new MeshData();
     float size = 0.1f;
+
+    // Vertex vertices[] =
+    // {
+    //     { { -0.1f, 0.1f * m_aspectRatio, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },  // Top-left vertex
+    //     { { 0.1f, 0.1f * m_aspectRatio, 0.0f }, { 1.0f, 1.0f, 0.0f, 1.0f } },   // Top-right vertex
+    //     { { 0.1f, -0.1f * m_aspectRatio, 0.0f }, { 0.0f, 1.0f, 1.0f, 1.0f } },  // Bottom-right vertex
+    //     { { -0.1f, -0.1f * m_aspectRatio, 0.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } }  // Bottom-left vertex
+    // };
+    //
+    //
+    // UINT indices[] =
+    // {
+    //     0, 1, 2,  // First triangle
+    //     0, 2, 3   // Second triangle
+    // };
     
     Vertex vertices[] =
     {
-        { { -0.1f, 0.1f * m_aspectRatio, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },  // Top-left vertex
-        { { 0.1f, 0.1f * m_aspectRatio, 0.0f }, { 1.0f, 1.0f, 0.0f, 1.0f } },   // Top-right vertex
-        { { 0.1f, -0.1f * m_aspectRatio, 0.0f }, { 0.0f, 1.0f, 1.0f, 1.0f } },  // Bottom-right vertex
-        { { -0.1f, -0.1f * m_aspectRatio, 0.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } }  // Bottom-left vertex
+        { { -1.0f, -1.0f, -1.0f }, { 1.0f, 1.0f, 1.0f, 1.0f } }, // 0 White
+        { { -1.0f, +1.0f, -1.0f }, { 0.0f, 0.0f, 0.0f, 1.0f } }, // 1 Black
+        { { +1.0f, +1.0f, -1.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } }, // 2 Red
+        { { +1.0f, -1.0f, -1.0f }, { 0.0f, 1.0f, 0.0f, 1.0f } }, // 3 Green
+        { { -1.0f, -1.0f, +1.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } }, // 4 Blue
+        { { -1.0f, +1.0f, +1.0f }, { 1.0f, 1.0f, 0.0f, 1.0f } }, // 5 Yellow
+        { { +1.0f, +1.0f, +1.0f }, { 0.0f, 1.0f, 1.0f, 1.0f } }, // 6 Cyan
+        { { +1.0f, -1.0f, +1.0f }, { 1.0f, 0.0f, 1.0f, 1.0f } }  // 7 Magenta
     };
-
-    UINT indices[] =
-        {
-        0, 1, 2,  // First triangle
-        0, 2, 3   // Second triangle
-    };
-        
-    mesh->indexBuffer = CreateBuffer<UINT>(m_device, _countof(indices));
-    CopyDataToBuffer(mesh->indexBuffer, indices, sizeof(indices));
-    mesh->indexBufferView.BufferLocation = mesh->indexBuffer->GetGPUVirtualAddress();
-    mesh->indexBufferView.SizeInBytes = sizeof(indices);
-    mesh->indexBufferView.Format = DXGI_FORMAT_R32_UINT;
-
-    mesh->vertexBuffer = CreateBuffer<Vertex>(m_device, _countof(vertices));
-    CopyDataToBuffer(mesh->vertexBuffer, vertices, sizeof(vertices));
-    mesh->vertexBufferView.BufferLocation = mesh->vertexBuffer->GetGPUVirtualAddress();
-    mesh->vertexBufferView.StrideInBytes = sizeof(Vertex);
-    mesh->vertexBufferView.SizeInBytes = sizeof(vertices);
-
-    XMMATRIX worldMatrix = XMMatrixTranslation(positionOffset.x, positionOffset.y, positionOffset.z);
-    mesh->constantBufferData.transformationMatrix = XMMatrixTranspose(worldMatrix);
-
-    mesh->moveDirection = (rand() % 2 == 0);
-    float randomSpeed = RandomRange(-1.0f, 1.0f);
     
-    if (mesh->moveDirection) {
-        mesh->direction = XMFLOAT3(randomSpeed / m_aspectRatio, 0.0f, 0.0f);
-    } else {
-        mesh->direction = XMFLOAT3(0.0f, randomSpeed, 0.0f);
-    }
+    
+    UINT indices[] =
+    {
+        // front face
+        0, 1, 2,
+        0, 2, 3,
+    
+        // back face
+        4, 6, 5,
+        4, 7, 6,
+    
+        // left face
+        4, 5, 1,
+        4, 1, 0,
+    
+        // right face
+        3, 2, 6,
+        3, 6, 7,
+    
+        // top face
+        1, 5, 6,
+        1, 6, 2,
+    
+        // bottom face
+        4, 0, 3,
+        4, 3, 7
+    };
+
+        
+    mesh->IndexBuffer = CreateBuffer<UINT>(m_device, _countof(indices));
+    CopyDataToBuffer(mesh->IndexBuffer, indices, sizeof(indices));
+    mesh->IndexBufferView.BufferLocation = mesh->IndexBuffer->GetGPUVirtualAddress();
+    mesh->IndexBufferView.SizeInBytes = sizeof(indices);
+    mesh->IndexBufferView.Format = DXGI_FORMAT_R32_UINT;
+
+    mesh->VertexBuffer = CreateBuffer<Vertex>(m_device, _countof(vertices));
+    CopyDataToBuffer(mesh->VertexBuffer, vertices, sizeof(vertices));
+    mesh->VertexBufferView.BufferLocation = mesh->VertexBuffer->GetGPUVirtualAddress();
+    mesh->VertexBufferView.StrideInBytes = sizeof(Vertex);
+    mesh->VertexBufferView.SizeInBytes = sizeof(vertices);
+
+    // XMMATRIX worldMatrix = XMMatrixTranslation(positionOffset.x, positionOffset.y, positionOffset.z);
+    // mesh->ConstantBufferData.TransformationMatrix = XMMatrixTranspose(worldMatrix);
+    //
+    // mesh->MoveDirection = (rand() % 2 == 0);
+    // float randomSpeed = RandomRange(-1.0f, 1.0f);
+    //
+    // if (mesh->MoveDirection) {
+    //     mesh->Direction = XMFLOAT3(randomSpeed / m_aspectRatio, 0.0f, 0.0f);
+    // } else {
+    //     mesh->Direction = XMFLOAT3(0.0f, randomSpeed, 0.0f);
+    // }
     
     m_meshes.push_back(mesh);
 }
@@ -350,7 +410,7 @@ void Game::CreateMeshes(int n)
 {
     std::random_device rd; 
     std::mt19937 gen(rd()); 
-    std::uniform_real_distribution<> dis(-1.0, 1.0); 
+    std::uniform_real_distribution dis(-1.0, 1.0); 
     
     for (int i = 0; i < n; i++)
     {
@@ -359,36 +419,111 @@ void Game::CreateMeshes(int n)
     }
 }
 
-
-void Game::CreateConstantBuffer()
+void Game::CreateConstantBuffer() const
 {
     for (MeshData* mesh : m_meshes)
     {
-        mesh->constantBuffer = CreateBuffer<SceneConstantBuffer>(m_device, 1);
+        mesh->ConstantBuffer = CreateBuffer<SceneConstantBuffer>(m_device, 1);
 
         D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
-        cbvDesc.BufferLocation = mesh->constantBuffer->GetGPUVirtualAddress();
+        cbvDesc.BufferLocation = mesh->ConstantBuffer->GetGPUVirtualAddress();
         cbvDesc.SizeInBytes = AlignTo256(sizeof(SceneConstantBuffer));
         m_device->CreateConstantBufferView(&cbvDesc, m_cbvHeap->GetCPUDescriptorHandleForHeapStart());
 
         CD3DX12_RANGE readRange(0, 0);
-        ThrowIfFailed(mesh->constantBuffer->Map(0, &readRange, &mesh->pCbvDataBegin));
-        memcpy(mesh->pCbvDataBegin, &mesh->constantBufferData, sizeof(mesh->constantBufferData));
+        ThrowIfFailed(mesh->ConstantBuffer->Map(0, &readRange, &mesh->PCbvDataBegin));
+        CopyMemory(mesh->PCbvDataBegin, &mesh->ConstantBufferData, sizeof(mesh->ConstantBufferData));
     }
 }
 
-void Game::RenderMesh(const MeshData* mesh)
+void Game::RenderMesh(const MeshData* mesh) const
 {
-    m_commandList->SetGraphicsRootConstantBufferView(0, mesh->constantBuffer->GetGPUVirtualAddress());
-    m_commandList->IASetVertexBuffers(0, 1, &mesh->vertexBufferView);
-    m_commandList->IASetIndexBuffer(&mesh->indexBufferView);
+    m_commandList->SetGraphicsRootConstantBufferView(0, mesh->ConstantBuffer->GetGPUVirtualAddress());
+    m_commandList->IASetVertexBuffers(0, 1, &mesh->VertexBufferView);
+    m_commandList->IASetIndexBuffer(&mesh->IndexBufferView);
     m_commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
 }
 
-void Game::RenderAllMeshes()
+void Game::RenderAllMeshes() const
 {
     for (const MeshData* mesh : m_meshes)
     {
         RenderMesh(mesh);
     }
+}
+
+// ---------- Frame Resources ----------
+
+void Game::CreateFrameResources()
+{
+    for (int i = 0; i < 3; ++i)
+    {
+        m_frameResources.push_back(std::make_unique<FrameResource>(m_device.Get(), 1, m_meshes.size(), 36));
+    }
+}
+
+void Game::UpdateCamera()
+{
+	// Convert Spherical to Cartesian coordinates.
+	m_eyePos.x = m_radius * sinf(m_phi)*cosf(m_theta);
+	m_eyePos.z = m_radius * sinf(m_phi)*sinf(m_theta);
+	m_eyePos.y = m_radius * cosf(m_phi);
+
+	// Build the view matrix.
+	XMVECTOR pos = XMVectorSet(m_eyePos.x, m_eyePos.y, m_eyePos.z, 1.0f);
+	XMVECTOR target = XMVectorZero();
+	XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+
+	XMMATRIX view = XMMatrixLookAtLH(pos, target, up);
+	XMStoreFloat4x4(&m_view, view);
+}
+
+void Game::UpdateObjectCbs()
+{
+	auto currObjectCb = m_currFrameResource->ObjectCb.get();
+	for(MeshData* mesh : m_meshes)
+	{
+	    XMMATRIX world = mesh->ConstantBufferData.TransformationMatrix;
+	    ObjectConstants objConstants;
+	    XMStoreFloat4x4(&objConstants.World, XMMatrixTranspose(world));
+	    currObjectCb->CopyData(1, objConstants);
+	}
+}
+
+void Game::UpdateMainPassCb()
+{
+	XMMATRIX view = XMLoadFloat4x4(&m_view);
+	XMMATRIX proj = XMLoadFloat4x4(&m_proj);
+
+	XMMATRIX viewProj = XMMatrixMultiply(view, proj);
+    
+    // Compute the determinant of the view matrix.
+    XMFLOAT4X4A mView;
+    XMStoreFloat4x4A(&mView, view);
+    XMMATRIX invView = XMMatrixInverse(nullptr, XMLoadFloat4x4A(&mView));
+
+    // Compute the determinant of the projection matrix.
+    XMFLOAT4X4A mProj;
+    XMStoreFloat4x4A(&mProj, proj);
+    XMMATRIX invProj = XMMatrixInverse(nullptr, XMLoadFloat4x4A(&mProj));
+
+    // Compute the determinant of the view-projection matrix.
+    XMFLOAT4X4A mViewProj;
+    XMStoreFloat4x4A(&mViewProj, viewProj);
+    XMMATRIX invViewProj = XMMatrixInverse(nullptr, XMLoadFloat4x4A(&mViewProj));
+
+	XMStoreFloat4x4(&m_mainPassCb.View, XMMatrixTranspose(view));
+	XMStoreFloat4x4(&m_mainPassCb.InvView, XMMatrixTranspose(invView));
+	XMStoreFloat4x4(&m_mainPassCb.Proj, XMMatrixTranspose(proj));
+	XMStoreFloat4x4(&m_mainPassCb.InvProj, XMMatrixTranspose(invProj));
+	XMStoreFloat4x4(&m_mainPassCb.ViewProj, XMMatrixTranspose(viewProj));
+	XMStoreFloat4x4(&m_mainPassCb.InvViewProj, XMMatrixTranspose(invViewProj));
+	m_mainPassCb.EyePosW = m_eyePos;
+	m_mainPassCb.RenderTargetSize = XMFLOAT2(static_cast<float>(m_width), static_cast<float>(m_height));
+	m_mainPassCb.InvRenderTargetSize = XMFLOAT2(1.0f / m_width, 1.0f / m_height);
+	m_mainPassCb.NearZ = 1.0f;
+	m_mainPassCb.FarZ = 1000.0f;
+
+	auto currPassCB = m_currFrameResource->PassCb.get();
+	currPassCB->CopyData(0, m_mainPassCb);
 }

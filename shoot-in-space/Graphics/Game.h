@@ -1,6 +1,9 @@
 #pragma once
 
+#include "Camera.h"
 #include "Manager.h"
+#include "FrameResource.h"
+#include "../Utils/MathHelper.h"
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
@@ -15,30 +18,6 @@ public:
     virtual void OnDestroy();
 
 private:
-    struct Vertex
-    {
-        XMFLOAT3 position;
-        XMFLOAT4 color;
-    };
-    
-    struct SceneConstantBuffer
-    {
-        XMMATRIX transformationMatrix;
-        XMFLOAT4 offset;
-        float padding[60]; // Padding so the constant buffer is 256-byte aligned.
-    };
-    
-    struct MeshData {
-        ComPtr<ID3D12Resource> vertexBuffer;
-        ComPtr<ID3D12Resource> indexBuffer;
-        D3D12_VERTEX_BUFFER_VIEW vertexBufferView;
-        D3D12_INDEX_BUFFER_VIEW indexBufferView;
-        ComPtr<ID3D12Resource> constantBuffer;
-        SceneConstantBuffer constantBufferData;
-        void* pCbvDataBegin = nullptr;
-        bool moveDirection;
-        XMFLOAT3 direction;
-    };
     
     std::vector<MeshData*> m_meshes;
     
@@ -64,6 +43,25 @@ private:
     HANDLE m_fenceEvent;
     ComPtr<ID3D12Fence> m_fence;
     UINT64 m_fenceValues[FrameCount];
+
+    // Frame resources
+    std::vector<std::unique_ptr<FrameResource>> m_frameResources;
+    FrameResource* m_currFrameResource = nullptr;
+    int m_currFrameResourceIndex = 0;
+    PassConstants m_mainPassCb;
+
+    XMFLOAT3 m_eyePos = { 0.0f, 0.0f, 0.0f };
+    XMFLOAT4X4 m_view = MathHelper::Identity4x4();
+    XMFLOAT4X4 m_proj = MathHelper::Identity4x4();
+
+    float m_theta = 1.5f*XM_PI;
+    float m_phi = XM_PIDIV2 - 0.1f;
+    float m_radius = 50.0f;
+
+    float m_sunTheta = 1.25f*XM_PI;
+    float m_sunPhi = XM_PIDIV4;
+
+    POINT m_lastMousePos;
     
     void LoadPipeline();
     void LoadAssets();
@@ -77,10 +75,16 @@ private:
     void CreateMesh(XMFLOAT3 positionOffset);
     void CreateMeshes(int n);
     void CreateSyncObjects();
-    void CreateConstantBuffer();
+    void CreateConstantBuffer() const;
 
-    void RenderMesh(const MeshData* mesh);
-    void RenderAllMeshes();
+    void RenderMesh(const MeshData* mesh) const;
+    void RenderAllMeshes() const;
 
+    void CreateFrameResources();
+    void UpdateCamera();
+    void UpdateObjectCbs();
+    void UpdateMainPassCb();
+    
+    Camera m_camera;
 
 };

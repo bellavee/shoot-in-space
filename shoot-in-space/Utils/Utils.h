@@ -45,10 +45,10 @@ void CopyDataToBuffer(ComPtr<ID3D12Resource>& buffer, T* data, size_t dataSize)
     buffer->Unmap(0, nullptr);
 }
 
-template <typename BufferType>
+template <typename T>
 ComPtr<ID3D12Resource> CreateBuffer(ComPtr<ID3D12Device> device, UINT itemCount)
 {
-    const UINT bufferSize = sizeof(BufferType) * itemCount; 
+    const UINT bufferSize = sizeof(T) * itemCount; 
     CD3DX12_HEAP_PROPERTIES heapProperties(D3D12_HEAP_TYPE_UPLOAD);
     CD3DX12_RESOURCE_DESC bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(bufferSize);
 
