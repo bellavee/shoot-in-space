@@ -66,4 +66,6 @@ private:
     MeshData* newMesh1;
     MeshData* newMesh2;
 
+    UINT m_indicesCount;
+
 };

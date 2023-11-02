@@ -307,17 +307,34 @@ MeshData* Game::CreateMesh()
     MeshData* mesh = new MeshData();    
     Vertex vertices[] =
     {
-        { { -0.1f, 0.1f * m_aspectRatio, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },  // Top-left vertex
-        { { 0.1f, 0.1f * m_aspectRatio, 0.0f }, { 1.0f, 1.0f, 0.0f, 1.0f } },   // Top-right vertex
-        { { 0.1f, -0.1f * m_aspectRatio, 0.0f }, { 0.0f, 1.0f, 1.0f, 1.0f } },  // Bottom-right vertex
-        { { -0.1f, -0.1f * m_aspectRatio, 0.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } }  // Bottom-left vertex
+        { { -0.1f, -0.1f * m_aspectRatio, 0.1f }, { 1.0f, 0.0f, 0.0f, 1.0f } },  // Top-left vertex Front
+        { { -0.1f, 0.1f * m_aspectRatio, 0.1f }, { 1.0f, 1.0f, 0.0f, 1.0f } },   // Top-right vertex Front
+        { { 0.1f, 0.1f * m_aspectRatio, 0.1f }, { 0.0f, 1.0f, 1.0f, 1.0f } },  // Bottom-right vertex Front
+        { { 0.1f, -0.1f * m_aspectRatio, 0.1f }, { 0.0f, 0.0f, 1.0f, 1.0f } },  // Bottom-left vertex Front
+
+        { { 0.1f, -0.1f * m_aspectRatio, -0.1f }, { 1.0f, 0.0f, 0.0f, 1.0f } },  // Top-left vertex Back
+        { { 0.1f, 0.1f * m_aspectRatio, -0.1f }, { 1.0f, 1.0f, 0.0f, 1.0f } },   // Top-right vertex Back
+        { { -0.1f, 0.1f * m_aspectRatio, -0.1f }, { 0.0f, 1.0f, 1.0f, 1.0f } },  // Bottom-right vertex Back
+        { { -0.1f, -0.1f * m_aspectRatio, -0.1f }, { 0.0f, 0.0f, 1.0f, 1.0f } }  // Bottom-left vertex Back
     };
 
     UINT indices[] =
-        {
-        0, 1, 2,  // First triangle
-        0, 2, 3   // Second triangle
+    {
+        0, 1, 3,
+        1, 2, 3,   // Front
+        3, 2, 4,
+        2, 5, 4,   // Right
+        4, 5, 7,
+        5, 6, 7,   // Back
+        7, 6, 0,
+        6, 1, 0,   // Left
+        1, 6, 2,
+        6, 5, 2,   // Top
+        7, 0, 4,
+        0, 3, 4,   // Bottom
     };
+
+    m_indicesCount = sizeof(indices) / 4;
         
     mesh->indexBuffer = CreateBuffer<UINT>(m_device, _countof(indices));
     CopyDataToBuffer(mesh->indexBuffer, indices, sizeof(indices));
@@ -358,7 +375,7 @@ void Game::RenderMesh(const MeshData* mesh)
     m_commandList->SetGraphicsRootConstantBufferView(0, mesh->constantBuffer->GetGPUVirtualAddress());
     m_commandList->IASetVertexBuffers(0, 1, &mesh->vertexBufferView);
     m_commandList->IASetIndexBuffer(&mesh->indexBufferView);
-    m_commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
+    m_commandList->DrawIndexedInstanced(m_indicesCount, 1, 0, 0, 0);
 }
 
 void Game::RenderAllMeshes()
