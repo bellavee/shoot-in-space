@@ -32,7 +32,7 @@ inline void ThrowIfFailed(HRESULT hr)
 }
 
 inline UINT AlignTo256(UINT size) {
-    return (size + 255) & ~255;
+    return (size + 255) & ~255; 
 }
 
 template<typename T>

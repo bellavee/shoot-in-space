@@ -52,7 +52,7 @@ void Game::OnUpdate()
     //     }
     //     CopyMemory(mesh->PCbvDataBegin, &mesh->ConstantBufferData, sizeof(mesh->ConstantBufferData));
     // }
-    //
+    
     UpdateObjectCbs();
     UpdateMainPassCb();
 }
@@ -80,7 +80,7 @@ void Game::LoadAssets()
     CreateRootSignature();
     CreateShadersAndPSO();
     CreateCommandList();
-    CreateMeshes(6);
+    CreateMeshes(3);
     CreateConstantBuffer();
     CreateSyncObjects();
     CreateFrameResources();
@@ -283,8 +283,8 @@ void Game::PopulateCommandList()
     ThrowIfFailed(m_commandAllocator->Reset());
     ThrowIfFailed(m_commandList->Reset(m_commandAllocator.Get(), m_pipelineState.Get()));
 
-    // auto CommandListAlloc = m_currFrameResource->CommandListAlloc;
-    // ThrowIfFailed(CommandListAlloc->Reset());
+    auto CommandListAlloc = m_currFrameResource->CommandListAlloc;
+    ThrowIfFailed(CommandListAlloc->Reset());
     
     m_commandList->SetGraphicsRootSignature(m_rootSignature.Get());
     
@@ -299,8 +299,8 @@ void Game::PopulateCommandList()
     CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), m_frameIndex, m_rtvDescriptorSize);
     m_commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 
-    // auto passCb = m_currFrameResource->PassCb->Resource();
-    // m_commandList->SetGraphicsRootConstantBufferView(1, passCb->GetGPUVirtualAddress());
+    auto passCb = m_currFrameResource->PassCb->Resource();
+    m_commandList->SetGraphicsRootConstantBufferView(1, passCb->GetGPUVirtualAddress());
     
     // Render
     const float clearColor[] = { 0.6f, 0.8f, 1.0f, 1.0f };
@@ -441,7 +441,7 @@ void Game::RenderMesh(const MeshData* mesh) const
     m_commandList->SetGraphicsRootConstantBufferView(0, mesh->ConstantBuffer->GetGPUVirtualAddress());
     m_commandList->IASetVertexBuffers(0, 1, &mesh->VertexBufferView);
     m_commandList->IASetIndexBuffer(&mesh->IndexBufferView);
-    m_commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
+    m_commandList->DrawIndexedInstanced(36, 1, 0, 0, 0);
 }
 
 void Game::RenderAllMeshes() const
@@ -458,15 +458,15 @@ void Game::CreateFrameResources()
 {
     for (int i = 0; i < 3; ++i)
     {
-        m_frameResources.push_back(std::make_unique<FrameResource>(m_device.Get(), 1, m_meshes.size(), 36));
+        m_frameResources.push_back(std::make_unique<FrameResource>(m_device.Get(), 1, m_meshes.size()));
     }
 }
 
 void Game::UpdateCamera()
 {
 	// Convert Spherical to Cartesian coordinates.
-	m_eyePos.x = m_radius * sinf(m_phi)*cosf(m_theta);
-	m_eyePos.z = m_radius * sinf(m_phi)*sinf(m_theta);
+	m_eyePos.x = m_radius * sinf(m_phi) * cosf(m_theta);
+	m_eyePos.z = m_radius * sinf(m_phi) * sinf(m_theta);
 	m_eyePos.y = m_radius * cosf(m_phi);
 
 	// Build the view matrix.
@@ -486,7 +486,7 @@ void Game::UpdateObjectCbs()
 	    XMMATRIX world = mesh->ConstantBufferData.TransformationMatrix;
 	    ObjectConstants objConstants;
 	    XMStoreFloat4x4(&objConstants.World, XMMatrixTranspose(world));
-	    currObjectCb->CopyData(1, objConstants);
+	    currObjectCb->CopyData(0, objConstants);
 	}
 }
 
@@ -525,5 +525,5 @@ void Game::UpdateMainPassCb()
 	m_mainPassCb.FarZ = 1000.0f;
 
 	auto currPassCB = m_currFrameResource->PassCb.get();
-	currPassCB->CopyData(0, m_mainPassCb);
+	currPassCB->CopyData(1, m_mainPassCb);
 }

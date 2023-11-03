@@ -32,10 +32,8 @@ PSInput VSMain(float4 position : POSITION, float4 color : COLOR)
 {
     PSInput result;
 
-    // float4 posW = mul(position, transformationMatrix);
-    // result.position = mul(posW, gViewProj);
-
-    result.position = mul(position, transformationMatrix);
+    float4 posW = mul(position, transformationMatrix);
+    result.position = mul(posW, gViewProj);
     result.position += offset;
     result.color = color;
 

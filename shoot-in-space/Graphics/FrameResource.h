@@ -57,7 +57,7 @@ struct PassConstants
 
 struct FrameResource
 {
-    FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount, UINT meshVertexCount);
+    FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount);
     FrameResource(const FrameResource& rhs) = delete;
     FrameResource& operator = (const FrameResource& rhs) = delete;
     ~FrameResource();
@@ -65,7 +65,6 @@ struct FrameResource
     ComPtr<ID3D12CommandAllocator> CommandListAlloc;
     std::unique_ptr<UploadBuffer<PassConstants>> PassCb = nullptr;
     std::unique_ptr<UploadBuffer<ObjectConstants>> ObjectCb = nullptr;
-    std::unique_ptr<UploadBuffer<Vertex>> MeshVb = nullptr;
     
     UINT64 Fence = 0;
 };
