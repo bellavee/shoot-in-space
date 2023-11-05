@@ -11,6 +11,13 @@ using Microsoft::WRL::ComPtr;
 using namespace DirectX;
 using namespace DirectX::PackedVector;
 
+enum class RenderLayer : int
+{
+	Opaque = 0,
+	Sky,
+	Count
+};
+
 class Game : public D3DApp
 {
 public:
@@ -69,13 +76,13 @@ private:
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers();
 	
 private:
-    std::vector<std::unique_ptr<FrameResource>> mFrameResources;
-    FrameResource* mCurrFrameResource = nullptr;
-    int mCurrFrameResourceIndex = 0;
+	std::vector<std::unique_ptr<FrameResource>> mFrameResources;
+	FrameResource* mCurrFrameResource = nullptr;
+	int mCurrFrameResourceIndex = 0;
 
-    UINT mCbvSrvDescriptorSize = 0;
+	UINT mCbvSrvDescriptorSize = 0;
 
-    ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
+	ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
 
 	ComPtr<ID3D12DescriptorHeap> mSrvDescriptorHeap = nullptr;
 
@@ -85,17 +92,19 @@ private:
 	std::unordered_map<std::string, ComPtr<ID3DBlob>> mShaders;
 	std::unordered_map<std::string, ComPtr<ID3D12PipelineState>> mPSOs;
 
-    std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
+	std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
  
 	// List of all the render items.
 	std::vector<std::unique_ptr<RenderItem>> mAllRitems;
 
 	// Render items divided by PSO.
-	std::vector<RenderItem*> mOpaqueRitems;
+	std::vector<RenderItem*> mRitemLayer[(int)RenderLayer::Count];
 
-    PassConstants mMainPassCB;
+	UINT mSkyTexHeapIndex = 0;
+
+	PassConstants mMainPassCB;
 
 	Camera mCamera;
 
-    POINT mLastMousePos;
+	POINT mLastMousePos;
 };

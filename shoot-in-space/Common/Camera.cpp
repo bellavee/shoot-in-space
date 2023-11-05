@@ -223,6 +223,28 @@ void Camera::RotateY(float angle)
 	mViewDirty = true;
 }
 
+void Camera::Rise(float d)
+{
+	// mPosition += d*mUp
+	XMVECTOR s = XMVectorReplicate(d);
+	XMVECTOR u = XMLoadFloat3(&mUp);
+	XMVECTOR p = XMLoadFloat3(&mPosition);
+	XMStoreFloat3(&mPosition, XMVectorMultiplyAdd(s, u, p));
+
+	mViewDirty = true;
+}
+
+void Camera::Descend(float d)
+{
+	// mPosition -= d*mUp
+	XMVECTOR s = XMVectorReplicate(d);
+	XMVECTOR u = XMLoadFloat3(&mUp);
+	XMVECTOR p = XMLoadFloat3(&mPosition);
+	XMStoreFloat3(&mPosition, XMVectorSubtract(p, XMVectorMultiply(s, u)));
+
+	mViewDirty = true;
+}
+
 void Camera::UpdateViewMatrix()
 {
 	if(mViewDirty)

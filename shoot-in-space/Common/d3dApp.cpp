@@ -252,6 +252,7 @@ LRESULT D3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		{
 			mAppPaused = true;
 			mTimer.Stop();
+			while (ShowCursor(TRUE) < 0);
 		}
 		else
 		{

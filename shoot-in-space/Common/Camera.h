@@ -68,6 +68,8 @@ public:
 	// Rotate the camera.
 	void Pitch(float angle);
 	void RotateY(float angle);
+	void Rise(float d);
+	void Descend(float d);
 
 	// After modifying camera position/orientation, call to rebuild the view matrix.
 	void UpdateViewMatrix();
