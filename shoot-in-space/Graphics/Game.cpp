@@ -360,7 +360,7 @@ void Game::LoadTextures()
 		L"Graphics\\Textures\\bricks_nmap.dds",
 		L"Graphics\\Textures\\tile.dds",
 		L"Graphics\\Textures\\tile_nmap.dds",
-		L"Graphics\\Textures\\white1x1.dds",
+		L"Graphics\\Textures\\crate.dds",
 		L"Graphics\\Textures\\default_nmap.dds",
 		L"Graphics\\Textures\\skybox.dds"
 	};
