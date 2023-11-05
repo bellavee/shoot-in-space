@@ -84,11 +84,11 @@ protected:
 	bool      mResizing = false;   // are the resize bars being dragged?
     bool      mFullscreenState = false;// fullscreen enabled
 
-	// Set true to use 4X MSAA (§4.1.8).  The default is false.
+	// Set true to use 4X MSAA (ï¿½4.1.8).  The default is false.
     bool      m4xMsaaState = false;    // 4X MSAA enabled
     UINT      m4xMsaaQuality = 0;      // quality level of 4X MSAA
 
-	// Used to keep track of the “delta-time” and game time (§4.4).
+	// Used to keep track of the ï¿½delta-timeï¿½ and game time (ï¿½4.4).
 	GameTimer mTimer;
 	
     Microsoft::WRL::ComPtr<IDXGIFactory4> mdxgiFactory;
@@ -118,7 +118,7 @@ protected:
 	UINT mCbvSrvUavDescriptorSize = 0;
 
 	// Derived class should set these in derived constructor to customize starting values.
-	std::wstring mMainWndCaption = L"d3d App";
+	std::wstring mMainWndCaption = L"Shoot-in-space";
 	D3D_DRIVER_TYPE md3dDriverType = D3D_DRIVER_TYPE_HARDWARE;
     DXGI_FORMAT mBackBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
     DXGI_FORMAT mDepthStencilFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;

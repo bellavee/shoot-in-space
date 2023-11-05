@@ -257,6 +257,22 @@ LRESULT D3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		{
 			mAppPaused = false;
 			mTimer.Start();
+
+			// Get the center of the window
+			RECT rc;
+			GetClientRect(mhMainWnd, &rc);
+			POINT pt;
+			pt.x = (rc.right - rc.left) / 2;
+			pt.y = (rc.bottom - rc.top) / 2;
+        
+			// Convert client coordinates to screen coordinates
+			ClientToScreen(mhMainWnd, &pt);
+
+			// Move the cursor to the center of the window
+			SetCursorPos(pt.x, pt.y);
+
+			// Hide the cursor
+			while (ShowCursor(FALSE) >= 0);
 		}
 		return 0;
 
