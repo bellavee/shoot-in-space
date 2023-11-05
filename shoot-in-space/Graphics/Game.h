@@ -46,6 +46,7 @@ private:
 		UINT IndexCount = 0;
 		UINT StartIndexLocation = 0;
 		int BaseVertexLocation = 0;
+		XMFLOAT3 Velocity;
 	};
 	
     virtual void OnResize() override;

@@ -4,6 +4,9 @@
 
 #include "Game.h"
 
+#include <random>
+#include <set>
+
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
 using namespace DirectX::PackedVector;
@@ -80,7 +83,26 @@ void Game::Update(const GameTimer& gt)
         WaitForSingleObject(eventHandle, INFINITE);
         CloseHandle(eventHandle);
     }
+	
+	float dt = gt.DeltaTime();
+	for (auto& e : mAllRitems)
+	{
+		// Use a pointer for the temporary object
+		RenderItem* ritem = e.get();
 
+		// Assuming you have set the initial velocity somewhere
+		XMFLOAT3 velocity = ritem->Velocity;
+
+		// Compute the new position
+		XMMATRIX world = XMLoadFloat4x4(&ritem->World);
+		XMVECTOR pos = XMVectorAdd(world.r[3], XMLoadFloat3(&velocity) * dt);
+        
+		// Update the world matrix with the new position
+		world.r[3] = pos;
+		XMStoreFloat4x4(&ritem->World, world);
+
+	}
+	
 	AnimateMaterials(gt);
 	UpdateObjectCBs(gt);
 	UpdateMaterialBuffer(gt);
@@ -323,7 +345,7 @@ void Game::UpdateMainPassCB(const GameTimer& gt)
 	XMStoreFloat4x4(&mMainPassCB.ViewProj, XMMatrixTranspose(viewProj));
 	XMStoreFloat4x4(&mMainPassCB.InvViewProj, XMMatrixTranspose(invViewProj));
 	mMainPassCB.EyePosW = mCamera.GetPosition3f();
-	mMainPassCB.RenderTargetSize = XMFLOAT2((float)mClientWidth, (float)mClientHeight);
+	mMainPassCB.RenderTargetSize = XMFLOAT2(static_cast<float>(mClientWidth), static_cast<float>(mClientHeight));
 	mMainPassCB.InvRenderTargetSize = XMFLOAT2(1.0f / mClientWidth, 1.0f / mClientHeight);
 	mMainPassCB.NearZ = 1.0f;
 	mMainPassCB.FarZ = 1000.0f;
@@ -365,7 +387,7 @@ void Game::LoadTextures()
 		L"Graphics\\Textures\\skybox.dds"
 	};
 	
-	for(int i = 0; i < (int)texNames.size(); ++i)
+	for(int i = 0; i < static_cast<int>(texNames.size()); ++i)
 	{
 		auto texMap = std::make_unique<Texture>();
 		texMap->Name = texNames[i];
@@ -505,8 +527,7 @@ void Game::BuildShapeGeometry()
     GeometryGenerator geoGen;
 	GeometryGenerator::MeshData box = geoGen.CreateBox(1.0f, 1.0f, 1.0f, 3);
 	GeometryGenerator::MeshData grid = geoGen.CreateGrid(20.0f, 30.0f, 60, 40);
-	GeometryGenerator::MeshData sphere = geoGen.CreateSphere(0.5f, 20, 20);
-	GeometryGenerator::MeshData cylinder = geoGen.CreateCylinder(0.5f, 0.3f, 3.0f, 20, 20);
+	GeometryGenerator::MeshData sphere = geoGen.CreateSphere(1.0f, 20, 20);
 
 	//
 	// We are concatenating all the geometry into one big vertex/index buffer.  So
@@ -517,13 +538,11 @@ void Game::BuildShapeGeometry()
 	UINT boxVertexOffset = 0;
 	UINT gridVertexOffset = (UINT)box.Vertices.size();
 	UINT sphereVertexOffset = gridVertexOffset + (UINT)grid.Vertices.size();
-	UINT cylinderVertexOffset = sphereVertexOffset + (UINT)sphere.Vertices.size();
 
 	// Cache the starting index for each object in the concatenated index buffer.
 	UINT boxIndexOffset = 0;
 	UINT gridIndexOffset = (UINT)box.Indices32.size();
 	UINT sphereIndexOffset = gridIndexOffset + (UINT)grid.Indices32.size();
-	UINT cylinderIndexOffset = sphereIndexOffset + (UINT)sphere.Indices32.size();
 
 	SubmeshGeometry boxSubmesh;
 	boxSubmesh.IndexCount = (UINT)box.Indices32.size();
@@ -540,10 +559,6 @@ void Game::BuildShapeGeometry()
 	sphereSubmesh.StartIndexLocation = sphereIndexOffset;
 	sphereSubmesh.BaseVertexLocation = sphereVertexOffset;
 
-	SubmeshGeometry cylinderSubmesh;
-	cylinderSubmesh.IndexCount = (UINT)cylinder.Indices32.size();
-	cylinderSubmesh.StartIndexLocation = cylinderIndexOffset;
-	cylinderSubmesh.BaseVertexLocation = cylinderVertexOffset;
 
 	//
 	// Extract the vertex elements we are interested in and pack the
@@ -553,8 +568,7 @@ void Game::BuildShapeGeometry()
 	auto totalVertexCount =
 		box.Vertices.size() +
 		grid.Vertices.size() +
-		sphere.Vertices.size() +
-		cylinder.Vertices.size();
+		sphere.Vertices.size();
 
 	std::vector<Vertex> vertices(totalVertexCount);
 
@@ -582,20 +596,12 @@ void Game::BuildShapeGeometry()
 		vertices[k].TexC = sphere.Vertices[i].TexC;
 		vertices[k].TangentU = sphere.Vertices[i].TangentU;
 	}
-
-	for(size_t i = 0; i < cylinder.Vertices.size(); ++i, ++k)
-	{
-		vertices[k].Pos = cylinder.Vertices[i].Position;
-		vertices[k].Normal = cylinder.Vertices[i].Normal;
-		vertices[k].TexC = cylinder.Vertices[i].TexC;
-		vertices[k].TangentU = cylinder.Vertices[i].TangentU;
-	}
+	
 
 	std::vector<std::uint16_t> indices;
 	indices.insert(indices.end(), std::begin(box.GetIndices16()), std::end(box.GetIndices16()));
 	indices.insert(indices.end(), std::begin(grid.GetIndices16()), std::end(grid.GetIndices16()));
 	indices.insert(indices.end(), std::begin(sphere.GetIndices16()), std::end(sphere.GetIndices16()));
-	indices.insert(indices.end(), std::begin(cylinder.GetIndices16()), std::end(cylinder.GetIndices16()));
 
     const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
     const UINT ibByteSize = (UINT)indices.size()  * sizeof(std::uint16_t);
@@ -623,7 +629,6 @@ void Game::BuildShapeGeometry()
 	geo->DrawArgs["box"] = boxSubmesh;
 	geo->DrawArgs["grid"] = gridSubmesh;
 	geo->DrawArgs["sphere"] = sphereSubmesh;
-	geo->DrawArgs["cylinder"] = cylinderSubmesh;
 
 	mGeometries[geo->Name] = std::move(geo);
 }
@@ -733,11 +738,21 @@ void Game::BuildMaterials()
 	sky->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 	sky->FresnelR0 = XMFLOAT3(0.1f, 0.1f, 0.1f);
 	sky->Roughness = 1.0f;
+
+	auto crate = std::make_unique<Material>();
+	crate->Name = "crate";
+	crate->MatCBIndex = 5;
+	crate->DiffuseSrvHeapIndex = 4;
+	crate->NormalSrvHeapIndex = 5;
+	crate->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	crate->FresnelR0 = XMFLOAT3(0.1f, 0.1f, 0.1f);
+	crate->Roughness = 0.1f;
 	
 	mMaterials["bricks0"] = std::move(bricks0);
 	mMaterials["tile0"] = std::move(tile0);
 	mMaterials["mirror0"] = std::move(mirror0);
 	mMaterials["sky"] = std::move(sky);
+	mMaterials["crate"] = std::move(crate);
 }
 
 void Game::BuildRenderItems()
@@ -757,8 +772,8 @@ void Game::BuildRenderItems()
 	mAllRitems.push_back(std::move(skyRitem));
 
 	auto boxRitem = std::make_unique<RenderItem>();
-	XMStoreFloat4x4(&boxRitem->World, XMMatrixScaling(2.0f, 1.0f, 2.0f)*XMMatrixTranslation(0.0f, 0.5f, 0.0f));
-	XMStoreFloat4x4(&boxRitem->TexTransform, XMMatrixScaling(1.0f, 0.5f, 1.0f));
+	XMStoreFloat4x4(&boxRitem->World, XMMatrixScaling(2.0f, 2.0f, 2.0f)*XMMatrixTranslation(0.0f, 0.0f, 0.0f));
+	XMStoreFloat4x4(&boxRitem->TexTransform, XMMatrixScaling(1.0f, 1.0f, 1.0f));
 	boxRitem->ObjCBIndex = 1;
 	boxRitem->Mat = mMaterials["bricks0"].get();
 	boxRitem->Geo = mGeometries["shapeGeo"].get();
@@ -770,24 +785,10 @@ void Game::BuildRenderItems()
 	mRitemLayer[(int)RenderLayer::Opaque].push_back(boxRitem.get());
 	mAllRitems.push_back(std::move(boxRitem));
 
-	auto globeRitem = std::make_unique<RenderItem>();
-	XMStoreFloat4x4(&globeRitem->World, XMMatrixScaling(2.0f, 2.0f, 2.0f)*XMMatrixTranslation(0.0f, 2.0f, 0.0f));
-	XMStoreFloat4x4(&globeRitem->TexTransform, XMMatrixScaling(1.0f, 1.0f, 1.0f));
-	globeRitem->ObjCBIndex = 2;
-	globeRitem->Mat = mMaterials["mirror0"].get();
-	globeRitem->Geo = mGeometries["shapeGeo"].get();
-	globeRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	globeRitem->IndexCount = globeRitem->Geo->DrawArgs["sphere"].IndexCount;
-	globeRitem->StartIndexLocation = globeRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
-	globeRitem->BaseVertexLocation = globeRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
-
-	mRitemLayer[(int)RenderLayer::Opaque].push_back(globeRitem.get());
-	mAllRitems.push_back(std::move(globeRitem));
-
     auto gridRitem = std::make_unique<RenderItem>();
     gridRitem->World = MathHelper::Identity4x4();
 	XMStoreFloat4x4(&gridRitem->TexTransform, XMMatrixScaling(8.0f, 8.0f, 1.0f));
-	gridRitem->ObjCBIndex = 3;
+	gridRitem->ObjCBIndex = 2;
 	gridRitem->Mat = mMaterials["tile0"].get();
 	gridRitem->Geo = mGeometries["shapeGeo"].get();
 	gridRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -799,69 +800,69 @@ void Game::BuildRenderItems()
 	mAllRitems.push_back(std::move(gridRitem));
 
 	XMMATRIX brickTexTransform = XMMatrixScaling(1.5f, 2.0f, 1.0f);
-	UINT objCBIndex = 4;
-	for(int i = 0; i < 5; ++i)
+	UINT objCBIndex = 3;
+
+	struct XMFLOAT3Comparator {
+		bool operator()(const XMFLOAT3& lhs, const XMFLOAT3& rhs) const {
+			if (lhs.x < rhs.x) return true;
+			if (rhs.x < lhs.x) return false;
+			if (lhs.y < rhs.y) return true;
+			if (rhs.y < lhs.y) return false;
+			return lhs.z < rhs.z;
+		}
+	};
+
+	std::default_random_engine generator; // Consider seeding with a value for reproducibility
+	std::uniform_real_distribution distribution_x(-10.0f, 10.0f); // Set bounds for X
+	std::uniform_real_distribution distribution_y(0.0f, 7.0f); // Set bounds for Y
+	std::uniform_real_distribution distribution_z(-10.0f, 10.0f); // Set bounds for Z
+	std::uniform_real_distribution distrib_velocity(-1.0f, 1.0f);
+	
+	std::set<DirectX::XMFLOAT3, XMFLOAT3Comparator> usedPositions;
+	
+	for(int i = 0; i < 20; ++i)
 	{
-		auto leftCylRitem = std::make_unique<RenderItem>();
-		auto rightCylRitem = std::make_unique<RenderItem>();
-		auto leftSphereRitem = std::make_unique<RenderItem>();
-		auto rightSphereRitem = std::make_unique<RenderItem>();
+		auto sphereRitem = std::make_unique<RenderItem>();
 
-		XMMATRIX leftCylWorld = XMMatrixTranslation(-5.0f, 1.5f, -10.0f + i*5.0f);
-		XMMATRIX rightCylWorld = XMMatrixTranslation(+5.0f, 1.5f, -10.0f + i*5.0f);
+		// Generate a unique random position for the sphere
+		XMFLOAT3 randomPos;
+		do {
+			randomPos.x = distribution_x(generator);
+			randomPos.y = distribution_y(generator);
+			randomPos.z = distribution_z(generator);
+		} while (usedPositions.find(randomPos) != usedPositions.end());
 
-		XMMATRIX leftSphereWorld = XMMatrixTranslation(-5.0f, 3.5f, -10.0f + i*5.0f);
-		XMMATRIX rightSphereWorld = XMMatrixTranslation(+5.0f, 3.5f, -10.0f + i*5.0f);
+		// Now we have a unique position, store it
+		usedPositions.insert(randomPos);
 
-		XMStoreFloat4x4(&leftCylRitem->World, rightCylWorld);
-		XMStoreFloat4x4(&leftCylRitem->TexTransform, brickTexTransform);
-		leftCylRitem->ObjCBIndex = objCBIndex++;
-		leftCylRitem->Mat = mMaterials["bricks0"].get();
-		leftCylRitem->Geo = mGeometries["shapeGeo"].get();
-		leftCylRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		leftCylRitem->IndexCount = leftCylRitem->Geo->DrawArgs["cylinder"].IndexCount;
-		leftCylRitem->StartIndexLocation = leftCylRitem->Geo->DrawArgs["cylinder"].StartIndexLocation;
-		leftCylRitem->BaseVertexLocation = leftCylRitem->Geo->DrawArgs["cylinder"].BaseVertexLocation;
+		// Move the sphere to the random position
+		XMMATRIX sphereWorld = XMMatrixTranslation(randomPos.x, randomPos.y, randomPos.z);
+		XMStoreFloat4x4(&sphereRitem->World, sphereWorld);
+		
+		XMStoreFloat4x4(&sphereRitem->World, sphereWorld);
+		sphereRitem->TexTransform = MathHelper::Identity4x4();
+		sphereRitem->ObjCBIndex = objCBIndex++;
+		sphereRitem->Mat = mMaterials["crate"].get();
+		sphereRitem->Geo = mGeometries["shapeGeo"].get();
+		sphereRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		sphereRitem->IndexCount = sphereRitem->Geo->DrawArgs["sphere"].IndexCount;
+		sphereRitem->StartIndexLocation = sphereRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
+		sphereRitem->BaseVertexLocation = sphereRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
 
-		XMStoreFloat4x4(&rightCylRitem->World, leftCylWorld);
-		XMStoreFloat4x4(&rightCylRitem->TexTransform, brickTexTransform);
-		rightCylRitem->ObjCBIndex = objCBIndex++;
-		rightCylRitem->Mat = mMaterials["bricks0"].get();
-		rightCylRitem->Geo = mGeometries["shapeGeo"].get();
-		rightCylRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		rightCylRitem->IndexCount = rightCylRitem->Geo->DrawArgs["cylinder"].IndexCount;
-		rightCylRitem->StartIndexLocation = rightCylRitem->Geo->DrawArgs["cylinder"].StartIndexLocation;
-		rightCylRitem->BaseVertexLocation = rightCylRitem->Geo->DrawArgs["cylinder"].BaseVertexLocation;
+		mRitemLayer[static_cast<int>(RenderLayer::Opaque)].push_back(sphereRitem.get());
 
-		XMStoreFloat4x4(&leftSphereRitem->World, leftSphereWorld);
-		leftSphereRitem->TexTransform = MathHelper::Identity4x4();
-		leftSphereRitem->ObjCBIndex = objCBIndex++;
-		leftSphereRitem->Mat = mMaterials["mirror0"].get();
-		leftSphereRitem->Geo = mGeometries["shapeGeo"].get();
-		leftSphereRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		leftSphereRitem->IndexCount = leftSphereRitem->Geo->DrawArgs["sphere"].IndexCount;
-		leftSphereRitem->StartIndexLocation = leftSphereRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
-		leftSphereRitem->BaseVertexLocation = leftSphereRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
+		// Set a random initial velocity
+		sphereRitem->Velocity.x = distrib_velocity(generator);
+		sphereRitem->Velocity.y = distrib_velocity(generator);
+		sphereRitem->Velocity.z = distrib_velocity(generator);
 
-		XMStoreFloat4x4(&rightSphereRitem->World, rightSphereWorld);
-		rightSphereRitem->TexTransform = MathHelper::Identity4x4();
-		rightSphereRitem->ObjCBIndex = objCBIndex++;
-		rightSphereRitem->Mat = mMaterials["mirror0"].get();
-		rightSphereRitem->Geo = mGeometries["shapeGeo"].get();
-		rightSphereRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		rightSphereRitem->IndexCount = rightSphereRitem->Geo->DrawArgs["sphere"].IndexCount;
-		rightSphereRitem->StartIndexLocation = rightSphereRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
-		rightSphereRitem->BaseVertexLocation = rightSphereRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
-
-		mRitemLayer[(int)RenderLayer::Opaque].push_back(leftCylRitem.get());
-		mRitemLayer[(int)RenderLayer::Opaque].push_back(rightCylRitem.get());
-		mRitemLayer[(int)RenderLayer::Opaque].push_back(leftSphereRitem.get());
-		mRitemLayer[(int)RenderLayer::Opaque].push_back(rightSphereRitem.get());
-
-		mAllRitems.push_back(std::move(leftCylRitem));
-		mAllRitems.push_back(std::move(rightCylRitem));
-		mAllRitems.push_back(std::move(leftSphereRitem));
-		mAllRitems.push_back(std::move(rightSphereRitem));
+		// Normalize the velocity if you want a constant speed regardless of direction
+		XMVECTOR velVec = XMLoadFloat3(&sphereRitem->Velocity);
+		velVec = XMVector3Normalize(velVec);
+		velVec = velVec * 0.05f; // SpeedFactor is a float that determines how fast the spheres should move
+		XMStoreFloat3(&sphereRitem->Velocity, velVec);
+		
+		mAllRitems.push_back(std::move(sphereRitem));
 	}
 }
 
