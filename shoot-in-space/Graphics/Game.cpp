@@ -396,7 +396,7 @@ void Game::LoadTextures()
 		L"Graphics\\Textures\\tile_nmap.dds",
 		L"Graphics\\Textures\\stone.dds",
 		L"Graphics\\Textures\\default_nmap.dds",
-		L"Graphics\\Textures\\skybox.dds"
+		L"Graphics\\Textures\\skydome.dds"
 	};
 	
 	for(int i = 0; i < static_cast<int>(texNames.size()); ++i)
