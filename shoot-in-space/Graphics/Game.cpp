@@ -4,6 +4,7 @@
 
 #include "Game.h"
 
+#include <iostream>
 #include <random>
 #include <set>
 
@@ -15,6 +16,7 @@ using namespace DirectX::PackedVector;
 #pragma comment(lib, "D3D12.lib")
 
 const int gNumFrameResources = 3;
+const float offsetBound = 20.0f;
 
 Game::Game(HINSTANCE hInstance) : D3DApp(hInstance) {}
 
@@ -83,31 +85,49 @@ void Game::Update(const GameTimer& gt)
         WaitForSingleObject(eventHandle, INFINITE);
         CloseHandle(eventHandle);
     }
-	
-	float dt = gt.DeltaTime();
-	for (auto& e : mAllRitems)
-	{
-		// Use a pointer for the temporary object
-		RenderItem* ritem = e.get();
 
-		// Assuming you have set the initial velocity somewhere
-		XMFLOAT3 velocity = ritem->Velocity;
-
-		// Compute the new position
-		XMMATRIX world = XMLoadFloat4x4(&ritem->World);
-		XMVECTOR pos = XMVectorAdd(world.r[3], XMLoadFloat3(&velocity) * dt);
-        
-		// Update the world matrix with the new position
-		world.r[3] = pos;
-		XMStoreFloat4x4(&ritem->World, world);
-
-	}
+	Moving(gt);
 	
 	AnimateMaterials(gt);
 	UpdateObjectCBs(gt);
 	UpdateMaterialBuffer(gt);
 	UpdateMainPassCB(gt);
 }
+
+void Game::Moving(const GameTimer& gt)
+{
+	for (auto& e : mAllRitems)
+	{
+		float dt = gt.DeltaTime();
+    
+		// Use a pointer for the temporary object
+		RenderItem* ritem = e.get();
+    
+		// Use a reference to the velocity for direct modification
+		XMFLOAT3& velocity = ritem->Velocity;
+		
+		// Compute the new position
+		XMMATRIX world = XMLoadFloat4x4(&ritem->World);
+		XMVECTOR pos = XMVectorAdd(world.r[3], XMLoadFloat3(&velocity) * dt);
+    
+		// Reflect the velocity if the object is outside the boundaries
+		XMFLOAT3 posFloat3;
+		XMStoreFloat3(&posFloat3, pos);
+    
+		if (posFloat3.x < -offsetBound || posFloat3.x > offsetBound) velocity.x *= -1;
+		if (posFloat3.y < -offsetBound || posFloat3.y > offsetBound) velocity.y *= -1;
+		if (posFloat3.z < -offsetBound || posFloat3.z > offsetBound) velocity.z *= -1;
+
+		// Adjust position if it's outside bounds after reflection
+		pos = XMVectorClamp(pos, XMVectorSet(-offsetBound, -offsetBound, -offsetBound, 1.0f), XMVectorSet(offsetBound, offsetBound, offsetBound, 1.0f));
+
+		// Update the world matrix with the new position
+		world.r[3] = pos;
+		XMStoreFloat4x4(&ritem->World, world);
+	}
+
+}
+
 
 void Game::Draw(const GameTimer& gt)
 {
@@ -273,23 +293,15 @@ void Game::UpdateObjectCBs(const GameTimer& gt)
 	auto currObjectCB = mCurrFrameResource->ObjectCB.get();
 	for(auto& e : mAllRitems)
 	{
-		// Only update the cbuffer data if the constants have changed.  
-		// This needs to be tracked per frame resource.
-		if(e->NumFramesDirty > 0)
-		{
-			XMMATRIX world = XMLoadFloat4x4(&e->World);
-			XMMATRIX texTransform = XMLoadFloat4x4(&e->TexTransform);
+		XMMATRIX world = XMLoadFloat4x4(&e->World);
+		XMMATRIX texTransform = XMLoadFloat4x4(&e->TexTransform);
 
-			ObjectConstants objConstants;
-			XMStoreFloat4x4(&objConstants.World, XMMatrixTranspose(world));
-			XMStoreFloat4x4(&objConstants.TexTransform, XMMatrixTranspose(texTransform));
-			objConstants.MaterialIndex = e->Mat->MatCBIndex;
+		ObjectConstants objConstants;
+		XMStoreFloat4x4(&objConstants.World, XMMatrixTranspose(world));
+		XMStoreFloat4x4(&objConstants.TexTransform, XMMatrixTranspose(texTransform));
+		objConstants.MaterialIndex = e->Mat->MatCBIndex;
 
-			currObjectCB->CopyData(e->ObjCBIndex, objConstants);
-
-			// Next FrameResource need to be updated too.
-			e->NumFramesDirty--;
-		}
+		currObjectCB->CopyData(e->ObjCBIndex, objConstants);
 	}
 }
 
@@ -770,9 +782,9 @@ void Game::BuildRenderItems()
 
 	mRitemLayer[(int)RenderLayer::Sky].push_back(skyRitem.get());
 	mAllRitems.push_back(std::move(skyRitem));
-
+	
 	auto boxRitem = std::make_unique<RenderItem>();
-	XMStoreFloat4x4(&boxRitem->World, XMMatrixScaling(2.0f, 2.0f, 2.0f)*XMMatrixTranslation(0.0f, 0.0f, 0.0f));
+	XMStoreFloat4x4(&boxRitem->World, XMMatrixScaling(0.25f, 0.25f, 0.25f)*XMMatrixTranslation(0.0f, 0.0f, 0.0f));
 	XMStoreFloat4x4(&boxRitem->TexTransform, XMMatrixScaling(1.0f, 1.0f, 1.0f));
 	boxRitem->ObjCBIndex = 1;
 	boxRitem->Mat = mMaterials["bricks0"].get();
@@ -784,24 +796,8 @@ void Game::BuildRenderItems()
 
 	mRitemLayer[(int)RenderLayer::Opaque].push_back(boxRitem.get());
 	mAllRitems.push_back(std::move(boxRitem));
-
-    auto gridRitem = std::make_unique<RenderItem>();
-    gridRitem->World = MathHelper::Identity4x4();
-	XMStoreFloat4x4(&gridRitem->TexTransform, XMMatrixScaling(8.0f, 8.0f, 1.0f));
-	gridRitem->ObjCBIndex = 2;
-	gridRitem->Mat = mMaterials["tile0"].get();
-	gridRitem->Geo = mGeometries["shapeGeo"].get();
-	gridRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-    gridRitem->IndexCount = gridRitem->Geo->DrawArgs["grid"].IndexCount;
-    gridRitem->StartIndexLocation = gridRitem->Geo->DrawArgs["grid"].StartIndexLocation;
-    gridRitem->BaseVertexLocation = gridRitem->Geo->DrawArgs["grid"].BaseVertexLocation;
-
-	mRitemLayer[(int)RenderLayer::Opaque].push_back(gridRitem.get());
-	mAllRitems.push_back(std::move(gridRitem));
-
-	XMMATRIX brickTexTransform = XMMatrixScaling(1.5f, 2.0f, 1.0f);
-	UINT objCBIndex = 3;
-
+	
+	UINT objCBIndex = 2;
 	struct XMFLOAT3Comparator {
 		bool operator()(const XMFLOAT3& lhs, const XMFLOAT3& rhs) const {
 			if (lhs.x < rhs.x) return true;
@@ -813,27 +809,47 @@ void Game::BuildRenderItems()
 	};
 
 	std::default_random_engine generator; // Consider seeding with a value for reproducibility
-	std::uniform_real_distribution distribution_x(-10.0f, 10.0f); // Set bounds for X
-	std::uniform_real_distribution distribution_y(0.0f, 7.0f); // Set bounds for Y
-	std::uniform_real_distribution distribution_z(-10.0f, 10.0f); // Set bounds for Z
+	std::uniform_real_distribution distribution_x(-offsetBound, offsetBound); // Set bounds for X
+	std::uniform_real_distribution distribution_y(0.0f, offsetBound / 2); // Set bounds for Y
+	std::uniform_real_distribution distribution_z(-offsetBound, offsetBound); // Set bounds for Z
 	std::uniform_real_distribution distrib_velocity(-1.0f, 1.0f);
 	
-	std::set<DirectX::XMFLOAT3, XMFLOAT3Comparator> usedPositions;
+	std::set<XMFLOAT3, XMFLOAT3Comparator> usedPositions;
 	
 	for(int i = 0; i < 20; ++i)
 	{
 		auto sphereRitem = std::make_unique<RenderItem>();
 
+		const float sphereRadius = 5.0f; // Sphere radius
+		const float minSeparation = sphereRadius * 2.0f; // Minimum distance between sphere centers
+
 		// Generate a unique random position for the sphere
 		XMFLOAT3 randomPos;
+		bool isUnique;
 		do {
 			randomPos.x = distribution_x(generator);
 			randomPos.y = distribution_y(generator);
 			randomPos.z = distribution_z(generator);
-		} while (usedPositions.find(randomPos) != usedPositions.end());
+
+			// Check if this position is far enough from all others
+			isUnique = true;
+			for (const auto& usedPos : usedPositions) {
+				XMFLOAT3 dir = {
+					usedPos.x - randomPos.x,
+					usedPos.y - randomPos.y,
+					usedPos.z - randomPos.z
+				};
+				float distSq = dir.x * dir.x + dir.y * dir.y + dir.z * dir.z;
+				if (distSq < minSeparation * minSeparation) {
+					isUnique = false;
+					break;
+				}
+			}
+		} while (!isUnique);
 
 		// Now we have a unique position, store it
 		usedPositions.insert(randomPos);
+
 
 		// Move the sphere to the random position
 		XMMATRIX sphereWorld = XMMatrixTranslation(randomPos.x, randomPos.y, randomPos.z);
@@ -859,7 +875,7 @@ void Game::BuildRenderItems()
 		// Normalize the velocity if you want a constant speed regardless of direction
 		XMVECTOR velVec = XMLoadFloat3(&sphereRitem->Velocity);
 		velVec = XMVector3Normalize(velVec);
-		velVec = velVec * 0.05f; // SpeedFactor is a float that determines how fast the spheres should move
+		velVec = velVec * 1.0f; // SpeedFactor is a float that determines how fast the spheres should move
 		XMStoreFloat3(&sphereRitem->Velocity, velVec);
 		
 		mAllRitems.push_back(std::move(sphereRitem));

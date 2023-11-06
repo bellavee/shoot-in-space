@@ -272,8 +272,6 @@ LRESULT D3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			// Move the cursor to the center of the window
 			SetCursorPos(pt.x, pt.y);
 
-			// Hide the cursor
-			while (ShowCursor(FALSE) >= 0);
 		}
 		return 0;
 

@@ -5,6 +5,8 @@
 #include <windows.h>
 #include "GameTimer.h"
 
+#include <iostream>
+
 GameTimer::GameTimer()
 : mSecondsPerCount(0.0), mDeltaTime(-1.0), mBaseTime(0), 
   mPausedTime(0), mPrevTime(0), mCurrTime(0), mStopped(false)
@@ -16,7 +18,7 @@ GameTimer::GameTimer()
 
 // Returns the total time elapsed since Reset() was called, NOT counting any
 // time when the clock is stopped.
-float GameTimer::TotalTime()const
+float GameTimer::TotalTime() const
 {
 	// If we are stopped, do not count the time that has passed since we stopped.
 	// Moreover, if we previously already had a pause, the distance 
@@ -48,9 +50,9 @@ float GameTimer::TotalTime()const
 	}
 }
 
-float GameTimer::DeltaTime()const
+float GameTimer::DeltaTime() const
 {
-	return (float)mDeltaTime;
+	return (float) mDeltaTime;
 }
 
 void GameTimer::Reset()
@@ -100,7 +102,7 @@ void GameTimer::Stop()
 
 void GameTimer::Tick()
 {
-	if( mStopped )
+	if(mStopped)
 	{
 		mDeltaTime = 0.0;
 		return;
@@ -110,18 +112,20 @@ void GameTimer::Tick()
 	QueryPerformanceCounter((LARGE_INTEGER*)&currTime);
 	mCurrTime = currTime;
 
-	// Time difference between this frame and the previous.
+	// Log the current and previous times
+	// std::cout << "Previous Time: " << mPrevTime << ", Current Time: " << mCurrTime << std::endl;
+
 	mDeltaTime = (mCurrTime - mPrevTime)*mSecondsPerCount;
 
-	// Prepare for next frame.
+	// Log the calculated delta time
+	// std::cout << "Delta Time: " << mDeltaTime << std::endl;
+
 	mPrevTime = mCurrTime;
 
-	// Force nonnegative.  The DXSDK's CDXUTTimer mentions that if the 
-	// processor goes into a power save mode or we get shuffled to another
-	// processor, then mDeltaTime can be negative.
 	if(mDeltaTime < 0.0)
 	{
 		mDeltaTime = 0.0;
 	}
 }
+
 
