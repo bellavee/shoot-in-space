@@ -87,6 +87,15 @@
     <ClInclude Include="Common\GeometryGenerator.h" />
     <ClInclude Include="Common\MathHelper.h" />
     <ClInclude Include="Common\UploadBuffer.h" />
+    <ClInclude Include="Engine\Entity.h" />
+    <ClInclude Include="Engine\EntityManager.h" />
+    <ClInclude Include="Engine\framework.h" />
+    <ClInclude Include="Engine\IComponent.h" />
+    <ClInclude Include="Engine\Physics.h" />
+    <ClInclude Include="Engine\Resource.h" />
+    <ClInclude Include="Engine\RigidBody.h" />
+    <ClInclude Include="Engine\targetver.h" />
+    <ClInclude Include="Engine\Transform.h" />
     <ClInclude Include="Graphics\FrameResource.h" />
     <ClInclude Include="Graphics\Game.h" />
   </ItemGroup>
@@ -98,6 +107,11 @@
     <ClCompile Include="Common\GameTimer.cpp" />
     <ClCompile Include="Common\GeometryGenerator.cpp" />
     <ClCompile Include="Common\MathHelper.cpp" />
+    <ClCompile Include="Engine\Entity.cpp" />
+    <ClCompile Include="Engine\EntityManager.cpp" />
+    <ClCompile Include="Engine\Physics.cpp" />
+    <ClCompile Include="Engine\RigidBody.cpp" />
+    <ClCompile Include="Engine\Transform.cpp" />
     <ClCompile Include="Graphics\Game.cpp" />
     <ClCompile Include="Graphics\FrameResource.cpp" />
     <ClCompile Include="Main.cpp" />
