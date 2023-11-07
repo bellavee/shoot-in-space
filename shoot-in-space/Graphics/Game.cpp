@@ -882,6 +882,60 @@ void Game::BuildRenderItems()
 	}
 }
 
+void Game::CreateSphere(float x, float y, float z)
+{
+	UINT objCBIndex = 2;
+	struct XMFLOAT3Comparator {
+		bool operator()(const XMFLOAT3& lhs, const XMFLOAT3& rhs) const {
+			if (lhs.x < rhs.x) return true;
+			if (rhs.x < lhs.x) return false;
+			if (lhs.y < rhs.y) return true;
+			if (rhs.y < lhs.y) return false;
+			return lhs.z < rhs.z;
+		}
+	};
+
+
+		auto sphereRitem = std::make_unique<RenderItem>();
+
+		const float sphereRadius = 5.0f; // Sphere radius
+		const float minSeparation = sphereRadius * 2.0f; // Minimum distance between sphere centers
+
+		// Generate a unique random position for the sphere
+		XMFLOAT3 randomPos;
+			randomPos.x = x;
+			randomPos.y = y;
+			randomPos.z = z;
+
+		// Move the sphere to the random position
+		XMMATRIX sphereWorld = XMMatrixTranslation(randomPos.x, randomPos.y, randomPos.z);
+		XMStoreFloat4x4(&sphereRitem->World, sphereWorld);
+		sphereRitem->TexTransform = MathHelper::Identity4x4();
+		sphereRitem->ObjCBIndex = objCBIndex++;
+		sphereRitem->Mat = mMaterials["crate"].get();
+		sphereRitem->Geo = mGeometries["shapeGeo"].get();
+		sphereRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		sphereRitem->IndexCount = sphereRitem->Geo->DrawArgs["sphere"].IndexCount;
+		sphereRitem->StartIndexLocation = sphereRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
+		sphereRitem->BaseVertexLocation = sphereRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
+
+		mRitemLayer[static_cast<int>(RenderLayer::Opaque)].push_back(sphereRitem.get());
+
+		// Set initial velocity
+		sphereRitem->Velocity.x = 1;
+		sphereRitem->Velocity.y = 1;
+		sphereRitem->Velocity.z = 1;
+
+		// Normalize the velocity if you want a constant speed regardless of direction
+		XMVECTOR velVec = XMLoadFloat3(&sphereRitem->Velocity);
+		velVec = XMVector3Normalize(velVec);
+		velVec = velVec * 1.0f; // SpeedFactor is a float that determines how fast the spheres should move
+		XMStoreFloat3(&sphereRitem->Velocity, velVec);
+
+		mAllRitems.push_back(std::move(sphereRitem));
+	
+}
+
 void Game::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems)
 {
     UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));

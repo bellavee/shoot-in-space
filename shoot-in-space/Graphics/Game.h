@@ -27,6 +27,8 @@ public:
     ~Game();
 
     virtual bool Initialize()override;
+	void CreateSphere(float x, float y, float z);
+	virtual void Update(const GameTimer& gt) override;
 
 private:
 	struct RenderItem
@@ -48,9 +50,7 @@ private:
 		int BaseVertexLocation = 0;
 		XMFLOAT3 Velocity;
 	};
-	
     virtual void OnResize() override;
-    virtual void Update(const GameTimer& gt) override;
     void Moving(const GameTimer& gt);
     virtual void Draw(const GameTimer& gt) override;
 
