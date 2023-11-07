@@ -17,6 +17,7 @@ using namespace DirectX::PackedVector;
 
 const int gNumFrameResources = 3;
 const float offsetBound = 20.0f;
+UINT objCBIndexCount = 0;
 
 Game::Game(HINSTANCE hInstance) : D3DApp(hInstance) {}
 
@@ -46,8 +47,8 @@ bool Game::Initialize()
     BuildShadersAndInputLayout();
     BuildShapeGeometry();
 	BuildMaterials();
-	BuildSkyBox(0);
-	BuildBoxItem(1, {0, 0, 0});
+	BuildSkyBox(objCBIndexCount++);
+	BuildBoxItem(objCBIndexCount++, {0, 0, 0});
 	
     BuildFrameResources();
     BuildPSOs();
@@ -231,6 +232,7 @@ void Game::OnMouseDown(WPARAM btnState, int x, int y)
     mLastMousePos.y = y;
 
     SetCapture(mhMainWnd);
+	BuildSphereAtMousePosition(objCBIndexCount++, mLastMousePos);
 }
 
 void Game::OnMouseUp(WPARAM btnState, int x, int y)
@@ -838,6 +840,35 @@ void Game::BuildSphereItem(UINT objCBIndex, XMFLOAT3 position)
 	XMStoreFloat3(&sphereRitem->Velocity, velVec);
 	mAllRitems.push_back(std::move(sphereRitem));
 }
+
+void Game::BuildSphereAtMousePosition(UINT objCBIndex, POINT mousePos)
+{
+	// Calculate NDC from mouse position
+	XMFLOAT2 ndcPos = {
+		(2.0f * mousePos.x / mClientWidth) - 1.0f,
+		1.0f - (2.0f * mousePos.y / mClientHeight)
+	};
+
+	// Unproject to world space
+	XMVECTOR mousePosInWorld = XMVector3Unproject(
+		XMVectorSet(ndcPos.x, ndcPos.y, 0, 1),
+		0, 0,
+		mClientWidth, mClientHeight,
+		0, 1,
+		mCamera.GetProj(),
+		mCamera.GetView(),
+		XMMatrixIdentity() // No additional world transformations
+	);
+
+	mCamera.UpdateViewMatrix();
+
+	XMFLOAT3 worldPosition;
+	XMStoreFloat3(&worldPosition, mousePosInWorld);
+
+	// Now call your existing function with the new position
+	BuildSphereItem(objCBIndex, worldPosition);
+}
+
 
 void Game::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems)
 {
