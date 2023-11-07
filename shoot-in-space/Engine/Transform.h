@@ -1,9 +1,12 @@
 #pragma once
+
 #include <DirectXMath.h>
 #include <unordered_map>
 #include <memory>
 #include "IComponent.h"
+
 using namespace DirectX;
+
 class Transform : public IComponent
 {
 public:

@@ -4,10 +4,8 @@
 #include <string>
 #include <vector>
 #include <typeindex>
-#include <typeinfo>
 #include <unordered_map>
 #include "IComponent.h"
-
 
 static unsigned int id = 0;
 
@@ -19,11 +17,23 @@ public:
 
 	~Entity();
 
-	template <class T>
-	void AddComponent();
+	template <typename T>
+	void AddComponent()
+	{
+		auto component = std::make_shared<T>(); // Create a shared_ptr of the component
+		component->AddEntity(this->_id, component);
+		_components[typeid(T)] = component; // Store the component in the map
+	}
 
-	template <class T>
-	T* GetComponent();
+	template <typename T>
+	T* GetComponent()
+	{
+		auto it = _components.find(typeid(T));
+		if (it != _components.end()) {
+			return dynamic_cast<T*>(it->second.get());
+		}
+		return nullptr;
+	}
 
 private:
 	static unsigned int idCounter; // To give each entity a unique ID
