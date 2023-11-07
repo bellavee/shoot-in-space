@@ -46,7 +46,9 @@ bool Game::Initialize()
     BuildShadersAndInputLayout();
     BuildShapeGeometry();
 	BuildMaterials();
-    BuildRenderItems();
+	BuildSkyBox(0);
+	BuildBoxItem(1, {0, 0, 0});
+	
     BuildFrameResources();
     BuildPSOs();
 
@@ -767,12 +769,12 @@ void Game::BuildMaterials()
 	mMaterials["crate"] = std::move(crate);
 }
 
-void Game::BuildRenderItems()
+void Game::BuildSkyBox(UINT objCBIndex)
 {
 	auto skyRitem = std::make_unique<RenderItem>();
 	XMStoreFloat4x4(&skyRitem->World, XMMatrixScaling(5000.0f, 5000.0f, 5000.0f));
 	skyRitem->TexTransform = MathHelper::Identity4x4();
-	skyRitem->ObjCBIndex = 0;
+	skyRitem->ObjCBIndex = objCBIndex;
 	skyRitem->Mat = mMaterials["sky"].get();
 	skyRitem->Geo = mGeometries["shapeGeo"].get();
 	skyRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -783,10 +785,18 @@ void Game::BuildRenderItems()
 	mRitemLayer[(int)RenderLayer::Sky].push_back(skyRitem.get());
 	mAllRitems.push_back(std::move(skyRitem));
 	
+}
+
+void Game::BuildBoxItem(UINT objCBIndex, XMFLOAT3 position)
+{
 	auto boxRitem = std::make_unique<RenderItem>();
+	XMMATRIX boxWorld = XMMatrixTranslation(position.x, position.y, position.z);
+	XMStoreFloat4x4(&boxRitem->World, boxWorld);
+	
 	XMStoreFloat4x4(&boxRitem->World, XMMatrixScaling(0.25f, 0.25f, 0.25f)*XMMatrixTranslation(0.0f, 0.0f, 0.0f));
 	XMStoreFloat4x4(&boxRitem->TexTransform, XMMatrixScaling(1.0f, 1.0f, 1.0f));
-	boxRitem->ObjCBIndex = 1;
+	
+	boxRitem->ObjCBIndex = objCBIndex;
 	boxRitem->Mat = mMaterials["bricks0"].get();
 	boxRitem->Geo = mGeometries["shapeGeo"].get();
 	boxRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -796,90 +806,37 @@ void Game::BuildRenderItems()
 
 	mRitemLayer[(int)RenderLayer::Opaque].push_back(boxRitem.get());
 	mAllRitems.push_back(std::move(boxRitem));
-	
-	UINT objCBIndex = 2;
-	struct XMFLOAT3Comparator {
-		bool operator()(const XMFLOAT3& lhs, const XMFLOAT3& rhs) const {
-			if (lhs.x < rhs.x) return true;
-			if (rhs.x < lhs.x) return false;
-			if (lhs.y < rhs.y) return true;
-			if (rhs.y < lhs.y) return false;
-			return lhs.z < rhs.z;
-		}
-	};
+}
 
+void Game::BuildSphereItem(UINT objCBIndex, XMFLOAT3 position)
+{
+	auto sphereRitem = std::make_unique<RenderItem>();
+	XMMATRIX sphereWorld = XMMatrixTranslation(position.x, position.y, position.z);
+	XMStoreFloat4x4(&sphereRitem->World, sphereWorld);
+	sphereRitem->TexTransform = MathHelper::Identity4x4();
+	sphereRitem->ObjCBIndex = objCBIndex;
+	sphereRitem->Mat = mMaterials["crate"].get();
+	sphereRitem->Geo = mGeometries["shapeGeo"].get();
+	sphereRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	sphereRitem->IndexCount = sphereRitem->Geo->DrawArgs["sphere"].IndexCount;
+	sphereRitem->StartIndexLocation = sphereRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
+	sphereRitem->BaseVertexLocation = sphereRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
+	mRitemLayer[static_cast<int>(RenderLayer::Opaque)].push_back(sphereRitem.get());
+	
 	std::default_random_engine generator; // Consider seeding with a value for reproducibility
-	std::uniform_real_distribution distribution_x(-offsetBound, offsetBound); // Set bounds for X
-	std::uniform_real_distribution distribution_y(0.0f, offsetBound / 2); // Set bounds for Y
-	std::uniform_real_distribution distribution_z(-offsetBound, offsetBound); // Set bounds for Z
 	std::uniform_real_distribution distrib_velocity(-1.0f, 1.0f);
 	
-	std::set<XMFLOAT3, XMFLOAT3Comparator> usedPositions;
-	
-	for(int i = 0; i < 20; ++i)
-	{
-		auto sphereRitem = std::make_unique<RenderItem>();
+	// Set a random initial velocity
+	sphereRitem->Velocity.x = distrib_velocity(generator);
+	sphereRitem->Velocity.y = distrib_velocity(generator);
+	sphereRitem->Velocity.z = distrib_velocity(generator);
 
-		const float sphereRadius = 5.0f; // Sphere radius
-		const float minSeparation = sphereRadius * 2.0f; // Minimum distance between sphere centers
-
-		// Generate a unique random position for the sphere
-		XMFLOAT3 randomPos;
-		bool isUnique;
-		do {
-			randomPos.x = distribution_x(generator);
-			randomPos.y = distribution_y(generator);
-			randomPos.z = distribution_z(generator);
-
-			// Check if this position is far enough from all others
-			isUnique = true;
-			for (const auto& usedPos : usedPositions) {
-				XMFLOAT3 dir = {
-					usedPos.x - randomPos.x,
-					usedPos.y - randomPos.y,
-					usedPos.z - randomPos.z
-				};
-				float distSq = dir.x * dir.x + dir.y * dir.y + dir.z * dir.z;
-				if (distSq < minSeparation * minSeparation) {
-					isUnique = false;
-					break;
-				}
-			}
-		} while (!isUnique);
-
-		// Now we have a unique position, store it
-		usedPositions.insert(randomPos);
-
-
-		// Move the sphere to the random position
-		XMMATRIX sphereWorld = XMMatrixTranslation(randomPos.x, randomPos.y, randomPos.z);
-		XMStoreFloat4x4(&sphereRitem->World, sphereWorld);
-		
-		XMStoreFloat4x4(&sphereRitem->World, sphereWorld);
-		sphereRitem->TexTransform = MathHelper::Identity4x4();
-		sphereRitem->ObjCBIndex = objCBIndex++;
-		sphereRitem->Mat = mMaterials["crate"].get();
-		sphereRitem->Geo = mGeometries["shapeGeo"].get();
-		sphereRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		sphereRitem->IndexCount = sphereRitem->Geo->DrawArgs["sphere"].IndexCount;
-		sphereRitem->StartIndexLocation = sphereRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
-		sphereRitem->BaseVertexLocation = sphereRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
-
-		mRitemLayer[static_cast<int>(RenderLayer::Opaque)].push_back(sphereRitem.get());
-
-		// Set a random initial velocity
-		sphereRitem->Velocity.x = distrib_velocity(generator);
-		sphereRitem->Velocity.y = distrib_velocity(generator);
-		sphereRitem->Velocity.z = distrib_velocity(generator);
-
-		// Normalize the velocity if you want a constant speed regardless of direction
-		XMVECTOR velVec = XMLoadFloat3(&sphereRitem->Velocity);
-		velVec = XMVector3Normalize(velVec);
-		velVec = velVec * 1.0f; // SpeedFactor is a float that determines how fast the spheres should move
-		XMStoreFloat3(&sphereRitem->Velocity, velVec);
-		
-		mAllRitems.push_back(std::move(sphereRitem));
-	}
+	// Normalize the velocity if you want a constant speed regardless of direction
+	XMVECTOR velVec = XMLoadFloat3(&sphereRitem->Velocity);
+	velVec = XMVector3Normalize(velVec);
+	velVec = velVec * 1.0f; // SpeedFactor is a float that determines how fast the spheres should move
+	XMStoreFloat3(&sphereRitem->Velocity, velVec);
+	mAllRitems.push_back(std::move(sphereRitem));
 }
 
 void Game::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems)
