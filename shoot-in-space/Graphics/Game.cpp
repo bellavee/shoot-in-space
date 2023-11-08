@@ -47,7 +47,7 @@ bool Game::Initialize()
     BuildShadersAndInputLayout();
     BuildShapeGeometry();
 	BuildMaterials();
-	BuildSkyBox(objCBIndexCount++);
+	BuildSkyBox(objCBIndexCount);
 	BuildBoxItem(objCBIndexCount++, {0, 0, 0});
 	
     BuildFrameResources();
