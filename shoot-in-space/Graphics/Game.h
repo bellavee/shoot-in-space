@@ -5,6 +5,10 @@
 #include "../Common/UploadBuffer.h"
 #include "../Common/GeometryGenerator.h"
 #include "../Common/Camera.h"
+#include "../Engine/Entity.h"
+#include "../Engine/RenderItem.h"
+#include "../Engine/RigidBody.h"
+#include "../Engine/Transform.h"
 #include "FrameResource.h"
 
 using Microsoft::WRL::ComPtr;
@@ -31,7 +35,7 @@ public:
 	virtual void Update(const GameTimer& gt) override;
 
 private:
-	struct RenderItem
+	/*struct RenderItem
 	{
 		RenderItem() = default;
 		RenderItem(const RenderItem& rhs) = delete;
@@ -49,7 +53,7 @@ private:
 		UINT StartIndexLocation = 0;
 		int BaseVertexLocation = 0;
 		XMFLOAT3 Velocity;
-	};
+	};*/
     virtual void OnResize() override;
     void Moving(const GameTimer& gt);
     virtual void Draw(const GameTimer& gt) override;
@@ -73,7 +77,7 @@ private:
     void BuildFrameResources();
     void BuildMaterials();
     void BuildRenderItems();
-    void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
+    void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<Entity*>& ritems);
 
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers();
 	
@@ -97,10 +101,10 @@ private:
 	std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
  
 	// List of all the render items.
-	std::vector<std::unique_ptr<RenderItem>> mAllRitems;
+	std::vector<std::unique_ptr<Entity>> mAllRitems;
 
 	// Render items divided by PSO.
-	std::vector<RenderItem*> mRitemLayer[(int)RenderLayer::Count];
+	std::vector<Entity*> mRitemLayer[(int)RenderLayer::Count];
 
 	UINT mSkyTexHeapIndex = 0;
 

@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include "IComponent.h"
 
+
 static unsigned int id = 0;
 
 class Entity
@@ -14,15 +15,15 @@ class Entity
 public:
 
 	Entity(std::string name);
-
 	~Entity();
 
 	template <typename T>
-	void AddComponent()
+	std::shared_ptr<T> AddComponent()
 	{
 		auto component = std::make_shared<T>(); // Create a shared_ptr of the component
 		component->AddEntity(this->_id, component);
 		_components[typeid(T)] = component; // Store the component in the map
+		return component;
 	}
 
 	template <typename T>

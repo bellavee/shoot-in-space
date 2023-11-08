@@ -8,7 +8,7 @@ void Transform::AddEntity(int entityid, std::shared_ptr<Transform> transform)
 
 void Transform::UpdateMatrix() 
 {
-
+	XMVECTOR Rot = XMLoadFloat3(&Rotation);
 	XMVECTOR quat = XMQuaternionIdentity();
 	XMVECTOR quatRot = XMQuaternionIdentity();
 	quat = XMQuaternionRotationAxis(m_vDir, m_roll);
@@ -18,10 +18,11 @@ void Transform::UpdateMatrix()
 	quat = XMQuaternionRotationAxis(m_vUp, m_yaw);
 	quatRot *= quat;
 
-	Rotation *= quatRot;
+	Rot *= quatRot;
 
 	XMMATRIX matRot;
-	matRot = XMMatrixRotationQuaternion(Rotation);
+
+	matRot = XMMatrixRotationQuaternion(Rot);
 	
 	matRot = XMMatrixTranspose(matRot);
 	XMFLOAT3X3 f4x4Rot;
@@ -36,7 +37,7 @@ void Transform::UpdateMatrix()
 	XMMATRIX mRot = XMMatrixIdentity();
 
 	mScale = XMMatrixScaling(m_xScale, m_yScale, m_zScale);
-	mPos = XMMatrixTranslation(m_xPos, m_yPos, m_zPos);
+	mPos = XMMatrixTranslation(Position.x, Position.y, Position.z);
 	mRot = XMMatrixRotationY(3.14f);
 
 	m_matrix = mScale;
@@ -47,10 +48,9 @@ void Transform::UpdateMatrix()
 
 void Transform::SetPostion(int x, int y, int z)
 {
-	m_xPos = x;
-	m_yPos = y;
-	m_zPos = z;
-	Position = XMVectorSet(m_xPos, m_yPos, m_zPos,0);
+	Position.x = x;
+	Position.y = y;
+	Position.z = z;
 }
 
 void Transform::Rotate(float yaw, float pitch, float roll)

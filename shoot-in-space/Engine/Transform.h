@@ -10,9 +10,9 @@ using namespace DirectX;
 class Transform : public IComponent
 {
 public:
-	XMVECTOR Scale;
-	XMVECTOR Position;
-	XMVECTOR Rotation;
+	XMFLOAT3 Scale;
+	XMFLOAT3 Position;
+	XMFLOAT3 Rotation;
 	void AddEntity(int entityId, std::shared_ptr<Transform> transform);
 	void SetPostion(int x, int y, int z);
 	void UpdateMatrix();
@@ -22,7 +22,7 @@ public:
 	void RotateRoll(float roll);
 	std::unordered_map<int, std::shared_ptr<Transform>> GetComponents();
 private:
-	float m_xPos, m_yPos, m_zPos, m_roll, m_pitch, m_yaw = 0;
+	float m_roll, m_pitch, m_yaw = 0;
 	float m_xScale, m_yScale, m_zScale = 1;
 
 	XMVECTOR m_vDir;

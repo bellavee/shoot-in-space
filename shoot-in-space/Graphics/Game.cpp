@@ -7,7 +7,8 @@
 #include <iostream>
 #include <random>
 #include <set>
-
+#include <filesystem>
+#include <DirectXMath.h>
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
 using namespace DirectX::PackedVector;
@@ -30,6 +31,8 @@ bool Game::Initialize()
 {
     if(!D3DApp::Initialize())
         return false;
+
+	//std::cout << std::filesystem::current_path() << std::endl;
 
     // Reset the command list to prep for initialization commands.
     ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
@@ -101,13 +104,14 @@ void Game::Moving(const GameTimer& gt)
 		float dt = gt.DeltaTime();
     
 		// Use a pointer for the temporary object
-		RenderItem* ritem = e.get();
-    
+		Entity* ritem = e.get();
+		RigidBody* rb = ritem->GetComponent<RigidBody>();
+		RenderItem* ri = ritem->GetComponent<RenderItem>();
 		// Use a reference to the velocity for direct modification
-		XMFLOAT3& velocity = ritem->Velocity;
+		XMFLOAT3& velocity = rb->Velocity;
 		
 		// Compute the new position
-		XMMATRIX world = XMLoadFloat4x4(&ritem->World);
+		XMMATRIX world = XMLoadFloat4x4(&ri->World);
 		XMVECTOR pos = XMVectorAdd(world.r[3], XMLoadFloat3(&velocity) * dt);
     
 		// Reflect the velocity if the object is outside the boundaries
@@ -123,7 +127,7 @@ void Game::Moving(const GameTimer& gt)
 
 		// Update the world matrix with the new position
 		world.r[3] = pos;
-		XMStoreFloat4x4(&ritem->World, world);
+		XMStoreFloat4x4(&ri->World, world);
 	}
 
 }
@@ -293,15 +297,17 @@ void Game::UpdateObjectCBs(const GameTimer& gt)
 	auto currObjectCB = mCurrFrameResource->ObjectCB.get();
 	for(auto& e : mAllRitems)
 	{
-		XMMATRIX world = XMLoadFloat4x4(&e->World);
-		XMMATRIX texTransform = XMLoadFloat4x4(&e->TexTransform);
+		RenderItem* ri = e.get()->GetComponent<RenderItem>();
+
+		XMMATRIX world = XMLoadFloat4x4(&ri->World);
+		XMMATRIX texTransform = XMLoadFloat4x4(&ri->TexTransform);
 
 		ObjectConstants objConstants;
 		XMStoreFloat4x4(&objConstants.World, XMMatrixTranspose(world));
 		XMStoreFloat4x4(&objConstants.TexTransform, XMMatrixTranspose(texTransform));
-		objConstants.MaterialIndex = e->Mat->MatCBIndex;
+		objConstants.MaterialIndex = ri->Mat->MatCBIndex;
 
-		currObjectCB->CopyData(e->ObjCBIndex, objConstants);
+		currObjectCB->CopyData(ri->ObjCBIndex, objConstants);
 	}
 }
 
@@ -769,30 +775,34 @@ void Game::BuildMaterials()
 
 void Game::BuildRenderItems()
 {
-	auto skyRitem = std::make_unique<RenderItem>();
-	XMStoreFloat4x4(&skyRitem->World, XMMatrixScaling(5000.0f, 5000.0f, 5000.0f));
-	skyRitem->TexTransform = MathHelper::Identity4x4();
-	skyRitem->ObjCBIndex = 0;
-	skyRitem->Mat = mMaterials["sky"].get();
-	skyRitem->Geo = mGeometries["shapeGeo"].get();
-	skyRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	skyRitem->IndexCount = skyRitem->Geo->DrawArgs["sphere"].IndexCount;
-	skyRitem->StartIndexLocation = skyRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
-	skyRitem->BaseVertexLocation = skyRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
+	auto skyRitem = std::make_unique<Entity>("Sky");
+	
+	std::shared_ptr<RenderItem> ri = skyRitem.get()->AddComponent<RenderItem>();
+	//auto skyRitem = std::make_unique<RenderItem>();
+	XMStoreFloat4x4(&ri->World, XMMatrixScaling(5000.0f, 5000.0f, 5000.0f));
+	ri->TexTransform = MathHelper::Identity4x4();
+	ri->ObjCBIndex = 0;
+	ri->Mat = mMaterials["sky"].get();
+	ri->Geo = mGeometries["shapeGeo"].get();
+	ri->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	ri->IndexCount = ri->Geo->DrawArgs["sphere"].IndexCount;
+	ri->StartIndexLocation = ri->Geo->DrawArgs["sphere"].StartIndexLocation;
+	ri->BaseVertexLocation = ri->Geo->DrawArgs["sphere"].BaseVertexLocation;
 
 	mRitemLayer[(int)RenderLayer::Sky].push_back(skyRitem.get());
 	mAllRitems.push_back(std::move(skyRitem));
 	
-	auto boxRitem = std::make_unique<RenderItem>();
-	XMStoreFloat4x4(&boxRitem->World, XMMatrixScaling(0.25f, 0.25f, 0.25f)*XMMatrixTranslation(0.0f, 0.0f, 0.0f));
-	XMStoreFloat4x4(&boxRitem->TexTransform, XMMatrixScaling(1.0f, 1.0f, 1.0f));
-	boxRitem->ObjCBIndex = 1;
-	boxRitem->Mat = mMaterials["bricks0"].get();
-	boxRitem->Geo = mGeometries["shapeGeo"].get();
-	boxRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	boxRitem->IndexCount = boxRitem->Geo->DrawArgs["box"].IndexCount;
-	boxRitem->StartIndexLocation = boxRitem->Geo->DrawArgs["box"].StartIndexLocation;
-	boxRitem->BaseVertexLocation = boxRitem->Geo->DrawArgs["box"].BaseVertexLocation;
+	auto boxRitem = std::make_unique<Entity>("Box");
+	ri = boxRitem.get()->AddComponent<RenderItem>();
+	XMStoreFloat4x4(&ri->World, XMMatrixScaling(0.25f, 0.25f, 0.25f)*XMMatrixTranslation(0.0f, 0.0f, 0.0f));
+	XMStoreFloat4x4(&ri->TexTransform, XMMatrixScaling(1.0f, 1.0f, 1.0f));
+	ri->ObjCBIndex = 1;
+	ri->Mat = mMaterials["bricks0"].get();
+	ri->Geo = mGeometries["shapeGeo"].get();
+	ri->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	ri->IndexCount = ri->Geo->DrawArgs["box"].IndexCount;
+	ri->StartIndexLocation = ri->Geo->DrawArgs["box"].StartIndexLocation;
+	ri->BaseVertexLocation = ri->Geo->DrawArgs["box"].BaseVertexLocation;
 
 	mRitemLayer[(int)RenderLayer::Opaque].push_back(boxRitem.get());
 	mAllRitems.push_back(std::move(boxRitem));
@@ -818,26 +828,30 @@ void Game::BuildRenderItems()
 	
 	for(int i = 0; i < 20; ++i)
 	{
-		auto sphereRitem = std::make_unique<RenderItem>();
-
+		//auto sphereRitem = std::make_unique<RenderItem>();
+		auto sphereRitem = std::make_unique<Entity>("Sphere");
+		std::shared_ptr<RenderItem> ri = sphereRitem->AddComponent<RenderItem>();
+		std::shared_ptr<RigidBody> rb = sphereRitem->AddComponent<RigidBody>();
+		std::shared_ptr<Transform> transform = sphereRitem->AddComponent<Transform>();
+		
 		const float sphereRadius = 5.0f; // Sphere radius
 		const float minSeparation = sphereRadius * 2.0f; // Minimum distance between sphere centers
 
 		// Generate a unique random position for the sphere
-		XMFLOAT3 randomPos;
 		bool isUnique;
 		do {
-			randomPos.x = distribution_x(generator);
-			randomPos.y = distribution_y(generator);
-			randomPos.z = distribution_z(generator);
+			
+			transform->Position.x = distribution_x(generator);
+			transform->Position.y = distribution_y(generator);
+			transform->Position.z = distribution_z(generator);
 
 			// Check if this position is far enough from all others
 			isUnique = true;
 			for (const auto& usedPos : usedPositions) {
 				XMFLOAT3 dir = {
-					usedPos.x - randomPos.x,
-					usedPos.y - randomPos.y,
-					usedPos.z - randomPos.z
+					usedPos.x - transform->Position.x,
+					usedPos.y - transform->Position.y,
+					usedPos.z - transform->Position.z
 				};
 				float distSq = dir.x * dir.x + dir.y * dir.y + dir.z * dir.z;
 				if (distSq < minSeparation * minSeparation) {
@@ -848,35 +862,35 @@ void Game::BuildRenderItems()
 		} while (!isUnique);
 
 		// Now we have a unique position, store it
-		usedPositions.insert(randomPos);
+		usedPositions.insert(transform->Position);
 
 
 		// Move the sphere to the random position
-		XMMATRIX sphereWorld = XMMatrixTranslation(randomPos.x, randomPos.y, randomPos.z);
-		XMStoreFloat4x4(&sphereRitem->World, sphereWorld);
+		XMMATRIX sphereWorld = XMMatrixTranslation(transform->Position.x, transform->Position.y, transform->Position.z);
+		XMStoreFloat4x4(&ri->World, sphereWorld);
 		
-		XMStoreFloat4x4(&sphereRitem->World, sphereWorld);
-		sphereRitem->TexTransform = MathHelper::Identity4x4();
-		sphereRitem->ObjCBIndex = objCBIndex++;
-		sphereRitem->Mat = mMaterials["crate"].get();
-		sphereRitem->Geo = mGeometries["shapeGeo"].get();
-		sphereRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		sphereRitem->IndexCount = sphereRitem->Geo->DrawArgs["sphere"].IndexCount;
-		sphereRitem->StartIndexLocation = sphereRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
-		sphereRitem->BaseVertexLocation = sphereRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
+		XMStoreFloat4x4(&ri->World, sphereWorld);
+		ri->TexTransform = MathHelper::Identity4x4();
+		ri->ObjCBIndex = objCBIndex++;
+		ri->Mat = mMaterials["crate"].get();
+		ri->Geo = mGeometries["shapeGeo"].get();
+		ri->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		ri->IndexCount = ri->Geo->DrawArgs["sphere"].IndexCount;
+		ri->StartIndexLocation = ri->Geo->DrawArgs["sphere"].StartIndexLocation;
+		ri->BaseVertexLocation = ri->Geo->DrawArgs["sphere"].BaseVertexLocation;
 
 		mRitemLayer[static_cast<int>(RenderLayer::Opaque)].push_back(sphereRitem.get());
 
 		// Set a random initial velocity
-		sphereRitem->Velocity.x = distrib_velocity(generator);
-		sphereRitem->Velocity.y = distrib_velocity(generator);
-		sphereRitem->Velocity.z = distrib_velocity(generator);
+		rb->Velocity.x = distrib_velocity(generator);
+		rb->Velocity.y = distrib_velocity(generator);
+		rb->Velocity.z = distrib_velocity(generator);
 
 		// Normalize the velocity if you want a constant speed regardless of direction
-		XMVECTOR velVec = XMLoadFloat3(&sphereRitem->Velocity);
+		XMVECTOR velVec = XMLoadFloat3(&rb->Velocity);
 		velVec = XMVector3Normalize(velVec);
 		velVec = velVec * 1.0f; // SpeedFactor is a float that determines how fast the spheres should move
-		XMStoreFloat3(&sphereRitem->Velocity, velVec);
+		XMStoreFloat3(&rb->Velocity, velVec);
 		
 		mAllRitems.push_back(std::move(sphereRitem));
 	}
@@ -896,7 +910,11 @@ void Game::CreateSphere(float x, float y, float z)
 	};
 
 
-		auto sphereRitem = std::make_unique<RenderItem>();
+	auto sphereRitem = std::make_unique<Entity>("Sphere");
+	sphereRitem.get()->AddComponent<RenderItem>();
+	sphereRitem->AddComponent<RigidBody>();
+	RenderItem* ri = sphereRitem->GetComponent<RenderItem>();
+	RigidBody* rb = sphereRitem->GetComponent<RigidBody>();
 
 		const float sphereRadius = 5.0f; // Sphere radius
 		const float minSeparation = sphereRadius * 2.0f; // Minimum distance between sphere centers
@@ -909,34 +927,34 @@ void Game::CreateSphere(float x, float y, float z)
 
 		// Move the sphere to the random position
 		XMMATRIX sphereWorld = XMMatrixTranslation(randomPos.x, randomPos.y, randomPos.z);
-		XMStoreFloat4x4(&sphereRitem->World, sphereWorld);
-		sphereRitem->TexTransform = MathHelper::Identity4x4();
-		sphereRitem->ObjCBIndex = objCBIndex++;
-		sphereRitem->Mat = mMaterials["crate"].get();
-		sphereRitem->Geo = mGeometries["shapeGeo"].get();
-		sphereRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		sphereRitem->IndexCount = sphereRitem->Geo->DrawArgs["sphere"].IndexCount;
-		sphereRitem->StartIndexLocation = sphereRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
-		sphereRitem->BaseVertexLocation = sphereRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
+		XMStoreFloat4x4(&ri->World, sphereWorld);
+		ri->TexTransform = MathHelper::Identity4x4();
+		ri->ObjCBIndex = objCBIndex++;
+		ri->Mat = mMaterials["crate"].get();
+		ri->Geo = mGeometries["shapeGeo"].get();
+		ri->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		ri->IndexCount = ri->Geo->DrawArgs["sphere"].IndexCount;
+		ri->StartIndexLocation = ri->Geo->DrawArgs["sphere"].StartIndexLocation;
+		ri->BaseVertexLocation = ri->Geo->DrawArgs["sphere"].BaseVertexLocation;
 
 		mRitemLayer[static_cast<int>(RenderLayer::Opaque)].push_back(sphereRitem.get());
 
 		// Set initial velocity
-		sphereRitem->Velocity.x = 1;
-		sphereRitem->Velocity.y = 1;
-		sphereRitem->Velocity.z = 1;
+		rb->Velocity.x = 1;
+		rb->Velocity.y = 1;
+		rb->Velocity.z = 1;
 
 		// Normalize the velocity if you want a constant speed regardless of direction
-		XMVECTOR velVec = XMLoadFloat3(&sphereRitem->Velocity);
+		XMVECTOR velVec = XMLoadFloat3(&rb->Velocity);
 		velVec = XMVector3Normalize(velVec);
 		velVec = velVec * 1.0f; // SpeedFactor is a float that determines how fast the spheres should move
-		XMStoreFloat3(&sphereRitem->Velocity, velVec);
+		XMStoreFloat3(&rb->Velocity, velVec);
 
 		mAllRitems.push_back(std::move(sphereRitem));
 	
 }
 
-void Game::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems)
+void Game::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<Entity*>& ritems)
 {
     UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
  
@@ -945,8 +963,8 @@ void Game::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector
     // For each render item...
     for(size_t i = 0; i < ritems.size(); ++i)
     {
-        auto ri = ritems[i];
-
+        auto entity = ritems[i];
+		RenderItem* ri = entity->GetComponent<RenderItem>();
     	// For vertex buffer
     	D3D12_VERTEX_BUFFER_VIEW vertexBufferView = ri->Geo->VertexBufferView();
     	cmdList->IASetVertexBuffers(0, 1, &vertexBufferView);

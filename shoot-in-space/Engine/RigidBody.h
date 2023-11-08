@@ -5,10 +5,12 @@
 #include <memory>
 using namespace DirectX;
 
-struct RigidBody : public IComponent
+class RigidBody : public IComponent
 {
-	XMVECTOR velocity;
-	float mass;
+public:
+	XMFLOAT3 Velocity;
+	float Mass;
+
 	void AddEntity(int entityid, std::shared_ptr<RigidBody> transform);
 	int _entityId;
 	std::unordered_map<int, std::shared_ptr<RigidBody>> _entitiesRB;

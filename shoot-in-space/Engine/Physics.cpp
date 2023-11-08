@@ -8,6 +8,8 @@ void Physics::Update(float dt, std::list<Entity> entities)
 	{
 		RigidBody* rb = entity.GetComponent<RigidBody>();
 		Transform* transform = entity.GetComponent<Transform>();
-		transform->Position += rb->velocity * dt;
+		transform->Position.x += rb->Velocity.x * dt;
+		transform->Position.y += rb->Velocity.y * dt;
+		transform->Position.z += rb->Velocity.z * dt;
 	}
 }
