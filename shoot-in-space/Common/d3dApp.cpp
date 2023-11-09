@@ -4,6 +4,7 @@
 
 #include "d3dApp.h"
 #include <WindowsX.h>
+#include "../MainGame.h"
 
 using Microsoft::WRL::ComPtr;
 using namespace std;
@@ -90,7 +91,7 @@ int D3DApp::Run()
 
 			if( !mAppPaused )
 			{
-				//MainGame::Update();
+
 
 				CalculateFrameStats();
 				Update(mTimer);	

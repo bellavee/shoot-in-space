@@ -1,4 +1,7 @@
+
 #include "Graphics/Game.h"
+#include "MainGame.h"
+
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance, PSTR cmdLine, int showCmd)
 {
     // Enable run-time memory check for debug builds.
@@ -9,8 +12,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance, PSTR cmdLine, in
     try
     {
         Game theApp(hInstance);
-        if(!theApp.Initialize())
-            return 0;
+        theApp.Initialize();
+        MainGame::Init(&theApp);
 
         return theApp.Run();
     }

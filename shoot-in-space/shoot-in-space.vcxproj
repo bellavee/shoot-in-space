@@ -99,6 +99,7 @@
     <ClInclude Include="Graphics\Game.h" />
     <ClInclude Include="Engine\RenderItem.h" />
     <ClInclude Include="Inputs.h" />
+    <ClInclude Include="MainGame.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Common\Camera.cpp" />
@@ -117,6 +118,7 @@
     <ClCompile Include="Inputs.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Engine\RenderItem.cpp" />
+    <ClCompile Include="MainGame.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Graphics\Shaders\" />

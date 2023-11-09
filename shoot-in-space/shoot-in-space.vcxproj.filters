@@ -90,6 +90,9 @@
     <ClInclude Include="Inputs.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
+    <ClInclude Include="MainGame.h">
+      <Filter>Fichiers d%27en-tête</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -139,6 +142,9 @@
     </ClCompile>
     <ClCompile Include="Common\GameTimer.cpp">
       <Filter>Fichiers sources\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="MainGame.cpp">
+      <Filter>Fichiers sources</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
