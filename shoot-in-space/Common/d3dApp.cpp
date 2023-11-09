@@ -4,7 +4,6 @@
 
 #include "d3dApp.h"
 #include <WindowsX.h>
-#include "../MainGame.h"
 
 using Microsoft::WRL::ComPtr;
 using namespace std;

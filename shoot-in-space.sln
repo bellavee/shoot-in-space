@@ -5,7 +5,7 @@ VisualStudioVersion = 17.7.34018.315
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "shoot-in-space", "shoot-in-space\shoot-in-space.vcxproj", "{B1ED117B-FAF5-459A-BF05-71D903C6A00D}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Shoot in space Game", "Shoot in space Game\Shoot in space Game.vcxproj", "{C65632CB-ED79-4974-9487-BB9489D523F9}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "main-game", "main-game\main-game.vcxproj", "{C65632CB-ED79-4974-9487-BB9489D523F9}"
 	ProjectSection(ProjectDependencies) = postProject
 		{B1ED117B-FAF5-459A-BF05-71D903C6A00D} = {B1ED117B-FAF5-459A-BF05-71D903C6A00D}
 	EndProjectSection
@@ -13,25 +13,17 @@ EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
-		Debug|x86 = Debug|x86
 		Release|x64 = Release|x64
-		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{B1ED117B-FAF5-459A-BF05-71D903C6A00D}.Debug|x64.ActiveCfg = Debug|x64
 		{B1ED117B-FAF5-459A-BF05-71D903C6A00D}.Debug|x64.Build.0 = Debug|x64
-		{B1ED117B-FAF5-459A-BF05-71D903C6A00D}.Debug|x86.ActiveCfg = Debug|x64
-		{B1ED117B-FAF5-459A-BF05-71D903C6A00D}.Debug|x86.Build.0 = Debug|x64
 		{B1ED117B-FAF5-459A-BF05-71D903C6A00D}.Release|x64.ActiveCfg = Release|x64
 		{B1ED117B-FAF5-459A-BF05-71D903C6A00D}.Release|x64.Build.0 = Release|x64
-		{B1ED117B-FAF5-459A-BF05-71D903C6A00D}.Release|x86.ActiveCfg = Release|x64
-		{B1ED117B-FAF5-459A-BF05-71D903C6A00D}.Release|x86.Build.0 = Release|x64
 		{C65632CB-ED79-4974-9487-BB9489D523F9}.Debug|x64.ActiveCfg = Debug|x64
 		{C65632CB-ED79-4974-9487-BB9489D523F9}.Debug|x64.Build.0 = Debug|x64
-		{C65632CB-ED79-4974-9487-BB9489D523F9}.Debug|x86.ActiveCfg = Debug|x64
 		{C65632CB-ED79-4974-9487-BB9489D523F9}.Release|x64.ActiveCfg = Release|x64
 		{C65632CB-ED79-4974-9487-BB9489D523F9}.Release|x64.Build.0 = Release|x64
-		{C65632CB-ED79-4974-9487-BB9489D523F9}.Release|x86.ActiveCfg = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

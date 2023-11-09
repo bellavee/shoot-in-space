@@ -87,10 +87,7 @@
     <ClInclude Include="Common\Camera.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
-    <ClInclude Include="Inputs.h">
-      <Filter>Fichiers d%27en-tête</Filter>
-    </ClInclude>
-    <ClInclude Include="MainGame.h">
+    <ClInclude Include="Engine\Inputs.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
   </ItemGroup>
@@ -125,9 +122,6 @@
     <ClCompile Include="Engine\Transform.cpp">
       <Filter>Fichiers sources\Component</Filter>
     </ClCompile>
-    <ClCompile Include="Inputs.cpp">
-      <Filter>Fichiers sources</Filter>
-    </ClCompile>
     <ClCompile Include="Common\d3dApp.cpp">
       <Filter>Fichiers sources\Common</Filter>
     </ClCompile>
@@ -143,7 +137,7 @@
     <ClCompile Include="Common\GameTimer.cpp">
       <Filter>Fichiers sources\Common</Filter>
     </ClCompile>
-    <ClCompile Include="MainGame.cpp">
+    <ClCompile Include="Engine\Inputs.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
   </ItemGroup>

@@ -18,13 +18,13 @@ enum class RenderLayer : int
 	Count
 };
 
-class Game : public D3DApp
+class Graphics : public D3DApp
 {
 public:
-    Game(HINSTANCE hInstance);
-    Game(const Game& rhs) = delete;
-    Game& operator=(const Game& rhs) = delete;
-    ~Game();
+    Graphics(HINSTANCE hInstance);
+    Graphics(const Graphics& rhs) = delete;
+    Graphics& operator=(const Graphics& rhs) = delete;
+    ~Graphics();
 
     virtual bool Initialize()override;
 

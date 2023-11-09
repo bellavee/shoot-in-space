@@ -2,7 +2,7 @@
 // Game.cpp by Frank Luna (C) 2015 All Rights Reserved.
 //***************************************************************************************
 
-#include "Game.h"
+#include "Graphics.h"
 
 #include <iostream>
 #include <random>
@@ -19,15 +19,15 @@ const int gNumFrameResources = 3;
 const float offsetBound = 20.0f;
 UINT objCBIndexCount = 0;
 
-Game::Game(HINSTANCE hInstance) : D3DApp(hInstance) {}
+Graphics::Graphics(HINSTANCE hInstance) : D3DApp(hInstance) {}
 
-Game::~Game()
+Graphics::~Graphics()
 {
     if(md3dDevice != nullptr)
         FlushCommandQueue();
 }
 
-bool Game::Initialize()
+bool Graphics::Initialize()
 {
     if(!D3DApp::Initialize())
         return false;
@@ -63,14 +63,14 @@ bool Game::Initialize()
     return true;
 }
  
-void Game::OnResize()
+void Graphics::OnResize()
 {
     D3DApp::OnResize();
 
 	mCamera.SetLens(0.25f*MathHelper::Pi, AspectRatio(), 1.0f, 1000.0f);
 }
 
-void Game::Update(const GameTimer& gt)
+void Graphics::Update(const GameTimer& gt)
 {
     OnKeyboardInput(gt);
 
@@ -96,7 +96,7 @@ void Game::Update(const GameTimer& gt)
 	UpdateMainPassCB(gt);
 }
 
-void Game::Moving(const GameTimer& gt)
+void Graphics::Moving(const GameTimer& gt)
 {
 	for (auto& e : mAllRitems)
 	{
@@ -131,7 +131,7 @@ void Game::Moving(const GameTimer& gt)
 }
 
 
-void Game::Draw(const GameTimer& gt)
+void Graphics::Draw(const GameTimer& gt)
 {
     auto cmdListAlloc = mCurrFrameResource->CmdListAlloc;
 
@@ -225,7 +225,7 @@ void Game::Draw(const GameTimer& gt)
     mCommandQueue->Signal(mFence.Get(), mCurrentFence);
 }
 
-void Game::OnMouseDown(WPARAM btnState, int x, int y)
+void Graphics::OnMouseDown(WPARAM btnState, int x, int y)
 {
     mLastMousePos.x = x;
     mLastMousePos.y = y;
@@ -234,12 +234,12 @@ void Game::OnMouseDown(WPARAM btnState, int x, int y)
 	BuildSphereAtMousePosition(objCBIndexCount++, mLastMousePos);
 }
 
-void Game::OnMouseUp(WPARAM btnState, int x, int y)
+void Graphics::OnMouseUp(WPARAM btnState, int x, int y)
 {
     ReleaseCapture();
 }
 
-void Game::OnMouseMove(WPARAM btnState, int x, int y)
+void Graphics::OnMouseMove(WPARAM btnState, int x, int y)
 {
 	// Calculate the mouse delta from the center of the screen.
 	int centerX = mClientWidth / 2;
@@ -261,7 +261,7 @@ void Game::OnMouseMove(WPARAM btnState, int x, int y)
 	mLastMousePos.y = centerY;
 }
  
-void Game::OnKeyboardInput(const GameTimer& gt)
+void Graphics::OnKeyboardInput(const GameTimer& gt)
 {
 	const float dt = gt.DeltaTime();
 
@@ -286,12 +286,12 @@ void Game::OnKeyboardInput(const GameTimer& gt)
 	mCamera.UpdateViewMatrix();
 }
  
-void Game::AnimateMaterials(const GameTimer& gt)
+void Graphics::AnimateMaterials(const GameTimer& gt)
 {
 	
 }
 
-void Game::UpdateObjectCBs(const GameTimer& gt)
+void Graphics::UpdateObjectCBs(const GameTimer& gt)
 {
 	for(auto& e : mAllRitems)
 	{
@@ -309,7 +309,7 @@ void Game::UpdateObjectCBs(const GameTimer& gt)
 	}
 }
 
-void Game::UpdateMaterialBuffer(const GameTimer& gt)
+void Graphics::UpdateMaterialBuffer(const GameTimer& gt)
 {
 	auto currMaterialBuffer = mCurrFrameResource->MaterialBuffer.get();
 	for(auto& e : mMaterials)
@@ -337,7 +337,7 @@ void Game::UpdateMaterialBuffer(const GameTimer& gt)
 	}
 }
 
-void Game::UpdateMainPassCB(const GameTimer& gt)
+void Graphics::UpdateMainPassCB(const GameTimer& gt)
 {
 	XMMATRIX view = mCamera.GetView();
 	XMMATRIX proj = mCamera.GetProj();
@@ -379,7 +379,7 @@ void Game::UpdateMainPassCB(const GameTimer& gt)
 	currPassCB->CopyData(0, mMainPassCB);
 }
 
-void Game::LoadTextures()
+void Graphics::LoadTextures()
 {
 	std::vector<std::string> texNames = 
 	{
@@ -416,7 +416,7 @@ void Game::LoadTextures()
 	}		
 }
 
-void Game::BuildRootSignature()
+void Graphics::BuildRootSignature()
 {
 	CD3DX12_DESCRIPTOR_RANGE texTable0;
 	texTable0.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0);
@@ -461,7 +461,7 @@ void Game::BuildRootSignature()
         IID_PPV_ARGS(mRootSignature.GetAddressOf())));
 }
 
-void Game::BuildDescriptorHeaps()
+void Graphics::BuildDescriptorHeaps()
 {
 	//
 	// Create the SRV heap.
@@ -515,7 +515,7 @@ void Game::BuildDescriptorHeaps()
 	mSkyTexHeapIndex = (UINT)tex2DList.size();
 }
 
-void Game::BuildShadersAndInputLayout()
+void Graphics::BuildShadersAndInputLayout()
 {
 	const D3D_SHADER_MACRO alphaTestDefines[] =
 	{
@@ -538,7 +538,7 @@ void Game::BuildShadersAndInputLayout()
     };
 }
 
-void Game::BuildShapeGeometry()
+void Graphics::BuildShapeGeometry()
 {
     GeometryGenerator geoGen;
 	GeometryGenerator::MeshData box = geoGen.CreateBox(1.0f, 1.0f, 1.0f, 3);
@@ -649,7 +649,7 @@ void Game::BuildShapeGeometry()
 	mGeometries[geo->Name] = std::move(geo);
 }
 
-void Game::BuildPSOs()
+void Graphics::BuildPSOs()
 {
     D3D12_GRAPHICS_PIPELINE_STATE_DESC opaquePsoDesc;
 
@@ -708,7 +708,7 @@ void Game::BuildPSOs()
 
 }
 
-void Game::BuildFrameResources()
+void Graphics::BuildFrameResources()
 {
     for(int i = 0; i < gNumFrameResources; ++i)
     {
@@ -717,7 +717,7 @@ void Game::BuildFrameResources()
     }
 }
 
-void Game::BuildMaterials()
+void Graphics::BuildMaterials()
 {
 	auto bricks0 = std::make_unique<Material>();
 	bricks0->Name = "bricks0";
@@ -771,7 +771,7 @@ void Game::BuildMaterials()
 	mMaterials["crate"] = std::move(crate);
 }
 
-void Game::BuildSkyBox(UINT objCBIndex)
+void Graphics::BuildSkyBox(UINT objCBIndex)
 {
 	auto skyRitem = std::make_unique<RenderItem>();
 	skyRitem->InitObjectCB(md3dDevice.Get());
@@ -791,7 +791,7 @@ void Game::BuildSkyBox(UINT objCBIndex)
 	
 }
 
-void Game::BuildBoxItem(UINT objCBIndex, XMFLOAT3 position)
+void Graphics::BuildBoxItem(UINT objCBIndex, XMFLOAT3 position)
 {
 	auto boxRitem = std::make_unique<RenderItem>();
 	boxRitem->InitObjectCB(md3dDevice.Get());
@@ -814,7 +814,7 @@ void Game::BuildBoxItem(UINT objCBIndex, XMFLOAT3 position)
 	mAllRitems.push_back(std::move(boxRitem));
 }
 
-void Game::BuildSphereItem(UINT objCBIndex, XMFLOAT3 position, XMFLOAT3 velocity)
+void Graphics::BuildSphereItem(UINT objCBIndex, XMFLOAT3 position, XMFLOAT3 velocity)
 {
 	auto sphereRitem = std::make_unique<RenderItem>();
 	sphereRitem->InitObjectCB(md3dDevice.Get());
@@ -838,7 +838,7 @@ void Game::BuildSphereItem(UINT objCBIndex, XMFLOAT3 position, XMFLOAT3 velocity
 	mAllRitems.push_back(std::move(sphereRitem));
 }
 
-void Game::BuildSphereAtMousePosition(UINT objCBIndex, POINT mousePos)
+void Graphics::BuildSphereAtMousePosition(UINT objCBIndex, POINT mousePos)
 {
 	// Calculate NDC from mouse position
 	XMFLOAT2 ndcPos = {
@@ -867,7 +867,7 @@ void Game::BuildSphereAtMousePosition(UINT objCBIndex, POINT mousePos)
 }
 
 
-void Game::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems)
+void Graphics::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems)
 {
     UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
  
@@ -896,7 +896,7 @@ void Game::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector
     }
 }
 
-std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> Game::GetStaticSamplers()
+std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> Graphics::GetStaticSamplers()
 {
 	// Applications usually only need a handful of samplers.  So just define them all up front
 	// and keep them available as part of the root signature.  

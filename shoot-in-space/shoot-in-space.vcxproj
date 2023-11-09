@@ -53,8 +53,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp20</LanguageStandard>
-      <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <LanguageStandard>Default</LanguageStandard>
+      <LanguageStandard_C>Default</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -90,16 +90,15 @@
     <ClInclude Include="Engine\Entity.h" />
     <ClInclude Include="Engine\framework.h" />
     <ClInclude Include="Engine\IComponent.h" />
+    <ClInclude Include="Engine\Inputs.h" />
     <ClInclude Include="Engine\Physics.h" />
     <ClInclude Include="Engine\Resource.h" />
     <ClInclude Include="Engine\RigidBody.h" />
     <ClInclude Include="Engine\targetver.h" />
     <ClInclude Include="Engine\Transform.h" />
     <ClInclude Include="Graphics\FrameResource.h" />
-    <ClInclude Include="Graphics\Game.h" />
+    <ClInclude Include="Graphics\Graphics.h" />
     <ClInclude Include="Engine\RenderItem.h" />
-    <ClInclude Include="Inputs.h" />
-    <ClInclude Include="MainGame.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Common\Camera.cpp" />
@@ -110,15 +109,13 @@
     <ClCompile Include="Common\GeometryGenerator.cpp" />
     <ClCompile Include="Common\MathHelper.cpp" />
     <ClCompile Include="Engine\Entity.cpp" />
+    <ClCompile Include="Engine\Inputs.cpp" />
     <ClCompile Include="Engine\Physics.cpp" />
     <ClCompile Include="Engine\RigidBody.cpp" />
     <ClCompile Include="Engine\Transform.cpp" />
-    <ClCompile Include="Graphics\Game.cpp" />
+    <ClCompile Include="Graphics\Graphics.cpp" />
     <ClCompile Include="Graphics\FrameResource.cpp" />
-    <ClCompile Include="Inputs.cpp" />
-    <ClCompile Include="Main.cpp" />
     <ClCompile Include="Engine\RenderItem.cpp" />
-    <ClCompile Include="MainGame.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Graphics\Shaders\" />
