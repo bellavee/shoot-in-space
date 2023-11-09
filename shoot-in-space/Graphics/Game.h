@@ -79,14 +79,16 @@ private:
     void BuildPSOs();
     void BuildFrameResources();
     void BuildMaterials();
-    void BuildSkyBox(UINT objCBIndex);
-    void BuildBoxItem(UINT objCBIndex, XMFLOAT3 position);
-    void BuildSphereItem(UINT objCBIndex, XMFLOAT3 position);
+	void BuildSkyBox(UINT objCBIndex);
     void BuildSphereAtMousePosition(UINT objCBIndex, POINT mousePos);
     void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
 
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers();
 	
+public:
+	void BuildBoxItem(UINT objCBIndex, XMFLOAT3 position);
+	void BuildSphereItem(UINT objCBIndex, XMFLOAT3 position);
+
 private:
 	std::vector<std::unique_ptr<FrameResource>> mFrameResources;
 	FrameResource* mCurrFrameResource = nullptr;

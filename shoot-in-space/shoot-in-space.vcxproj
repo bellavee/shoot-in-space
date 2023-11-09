@@ -19,13 +19,13 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -88,7 +88,6 @@
     <ClInclude Include="Common\MathHelper.h" />
     <ClInclude Include="Common\UploadBuffer.h" />
     <ClInclude Include="Engine\Entity.h" />
-    <ClInclude Include="Engine\EntityManager.h" />
     <ClInclude Include="Engine\framework.h" />
     <ClInclude Include="Engine\IComponent.h" />
     <ClInclude Include="Engine\Physics.h" />
@@ -98,6 +97,9 @@
     <ClInclude Include="Engine\Transform.h" />
     <ClInclude Include="Graphics\FrameResource.h" />
     <ClInclude Include="Graphics\Game.h" />
+    <ClInclude Include="Engine\RenderItem.h" />
+    <ClInclude Include="Inputs.h" />
+    <ClInclude Include="MainGame.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Common\Camera.cpp" />
@@ -108,13 +110,15 @@
     <ClCompile Include="Common\GeometryGenerator.cpp" />
     <ClCompile Include="Common\MathHelper.cpp" />
     <ClCompile Include="Engine\Entity.cpp" />
-    <ClCompile Include="Engine\EntityManager.cpp" />
     <ClCompile Include="Engine\Physics.cpp" />
     <ClCompile Include="Engine\RigidBody.cpp" />
     <ClCompile Include="Engine\Transform.cpp" />
     <ClCompile Include="Graphics\Game.cpp" />
     <ClCompile Include="Graphics\FrameResource.cpp" />
+    <ClCompile Include="Inputs.cpp" />
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="Engine\RenderItem.cpp" />
+    <ClCompile Include="MainGame.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Graphics\Shaders\" />
