@@ -105,8 +105,8 @@ void Game::Moving(const GameTimer& gt)
     
 		// Use a pointer for the temporary object
 		Entity* ritem = e.get();
-		RigidBody* rb = ritem->GetComponent<RigidBody>();
-		RenderItem* ri = ritem->GetComponent<RenderItem>();
+		std::shared_ptr<RigidBody> rb = ritem->AddComponent<RigidBody>();
+		std::shared_ptr<RenderItem> ri = ritem->AddComponent<RenderItem>();
 		// Use a reference to the velocity for direct modification
 		XMFLOAT3& velocity = rb->Velocity;
 		
@@ -297,7 +297,7 @@ void Game::UpdateObjectCBs(const GameTimer& gt)
 	auto currObjectCB = mCurrFrameResource->ObjectCB.get();
 	for(auto& e : mAllRitems)
 	{
-		RenderItem* ri = e.get()->GetComponent<RenderItem>();
+		std::shared_ptr<RenderItem> ri = e.get()->AddComponent<RenderItem>();
 
 		XMMATRIX world = XMLoadFloat4x4(&ri->World);
 		XMMATRIX texTransform = XMLoadFloat4x4(&ri->TexTransform);
@@ -911,10 +911,8 @@ void Game::CreateSphere(float x, float y, float z)
 
 
 	auto sphereRitem = std::make_unique<Entity>("Sphere");
-	sphereRitem.get()->AddComponent<RenderItem>();
-	sphereRitem->AddComponent<RigidBody>();
-	RenderItem* ri = sphereRitem->GetComponent<RenderItem>();
-	RigidBody* rb = sphereRitem->GetComponent<RigidBody>();
+	std::shared_ptr<RenderItem> ri = sphereRitem->AddComponent<RenderItem>();
+	std::shared_ptr<RigidBody> rb = sphereRitem->AddComponent<RigidBody>();
 
 		const float sphereRadius = 5.0f; // Sphere radius
 		const float minSeparation = sphereRadius * 2.0f; // Minimum distance between sphere centers
@@ -964,7 +962,7 @@ void Game::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector
     for(size_t i = 0; i < ritems.size(); ++i)
     {
         auto entity = ritems[i];
-		RenderItem* ri = entity->GetComponent<RenderItem>();
+		std::shared_ptr<RenderItem> ri = entity->AddComponent<RenderItem>();
     	// For vertex buffer
     	D3D12_VERTEX_BUFFER_VIEW vertexBufferView = ri->Geo->VertexBufferView();
     	cmdList->IASetVertexBuffers(0, 1, &vertexBufferView);

@@ -8,6 +8,8 @@ using namespace DirectX;
 class RigidBody : public IComponent
 {
 public:
+	RigidBody();
+	~RigidBody();
 	XMFLOAT3 Velocity;
 	float Mass;
 

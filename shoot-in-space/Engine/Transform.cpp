@@ -48,9 +48,7 @@ void Transform::UpdateMatrix()
 
 void Transform::SetPostion(int x, int y, int z)
 {
-	Position.x = x;
-	Position.y = y;
-	Position.z = z;
+	Position = XMFLOAT3(x, y, z);
 }
 
 void Transform::Rotate(float yaw, float pitch, float roll)
