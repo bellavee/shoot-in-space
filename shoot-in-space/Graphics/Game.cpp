@@ -863,7 +863,7 @@ void Game::BuildSphereAtMousePosition(UINT objCBIndex, POINT mousePos)
 	XMStoreFloat3(&worldPosition, mousePosInWorld);
 
 	// Now call your existing function with the new position
-	BuildSphereItem(objCBIndex, worldPosition);
+	BuildSphereItem(objCBIndex, worldPosition,XMFLOAT3(1,0,0));
 }
 
 

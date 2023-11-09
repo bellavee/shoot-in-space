@@ -1,5 +1,6 @@
-
 #include "Engine/Transform.h"
+#include "MainGame.h"
+#include "Engine/RigidBody.h"
 
 void MainGame::CreateEntities() {
 
@@ -7,16 +8,10 @@ void MainGame::CreateEntities() {
 
 void MainGame::Init(Game* game) {
 
-	Entity* entity = new Entity("test");
-	entity->AddComponent<Transform>();
+	Entity* entity = new Entity();
 	std::shared_ptr<Transform> tr = entity->AddComponent<Transform>();
-	game->BuildSphereItem(0, tr->Position);
-
-	game->BuildSphereItem(0, {1, 1, 1});
-	game->BuildSphereItem(0, {1, 2, 1});
-	game->BuildSphereItem(0, {1, 1, 2});
-	game->BuildSphereItem(0, {3, 1, 1});
-	game->BuildSphereItem(0, {1, 2, 1});
+	std::shared_ptr<RigidBody> rb = entity->AddComponent<RigidBody>();
+	game->BuildSphereItem(0, tr->Position,rb->Velocity);
 }
 
-void Update();
+//void Update();

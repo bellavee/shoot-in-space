@@ -87,7 +87,7 @@ private:
 	
 public:
 	void BuildBoxItem(UINT objCBIndex, XMFLOAT3 position);
-	void BuildSphereItem(UINT objCBIndex, XMFLOAT3 position);
+	void BuildSphereItem(UINT objCBIndex, XMFLOAT3 position, XMFLOAT3 velocity);
 
 private:
 	std::vector<std::unique_ptr<FrameResource>> mFrameResources;
