@@ -80,7 +80,8 @@ private:
     void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<Entity*>& ritems);
 
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers();
-	
+	std::vector<std::unique_ptr<Entity>> mAllRitems;
+
 private:
 	std::vector<std::unique_ptr<FrameResource>> mFrameResources;
 	FrameResource* mCurrFrameResource = nullptr;
@@ -101,7 +102,6 @@ private:
 	std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
  
 	// List of all the render items.
-	std::vector<std::unique_ptr<Entity>> mAllRitems;
 
 	// Render items divided by PSO.
 	std::vector<Entity*> mRitemLayer[(int)RenderLayer::Count];

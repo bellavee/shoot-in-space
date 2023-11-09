@@ -105,31 +105,33 @@ void Game::Moving(const GameTimer& gt)
     
 		// Use a pointer for the temporary object
 		Entity* ritem = e.get();
-		std::shared_ptr<RigidBody> rb = ritem->AddComponent<RigidBody>();
-		std::shared_ptr<RenderItem> ri = ritem->AddComponent<RenderItem>();
-		// Use a reference to the velocity for direct modification
-		XMFLOAT3& velocity = rb->Velocity;
-		
-		// Compute the new position
-		XMMATRIX world = XMLoadFloat4x4(&ri->World);
-		XMVECTOR pos = XMVectorAdd(world.r[3], XMLoadFloat3(&velocity) * dt);
-    
-		// Reflect the velocity if the object is outside the boundaries
-		XMFLOAT3 posFloat3;
-		XMStoreFloat3(&posFloat3, pos);
-    
-		if (posFloat3.x < -offsetBound || posFloat3.x > offsetBound) velocity.x *= -1;
-		if (posFloat3.y < -offsetBound || posFloat3.y > offsetBound) velocity.y *= -1;
-		if (posFloat3.z < -offsetBound || posFloat3.z > offsetBound) velocity.z *= -1;
+		RigidBody* rb = ritem->GetComponent<RigidBody>();
+		if (rb != nullptr) 
+		{
+			RenderItem* ri = ritem->GetComponent<RenderItem>();
+			// Use a reference to the velocity for direct modification
+			XMFLOAT3& velocity = rb->Velocity;
 
-		// Adjust position if it's outside bounds after reflection
-		pos = XMVectorClamp(pos, XMVectorSet(-offsetBound, -offsetBound, -offsetBound, 1.0f), XMVectorSet(offsetBound, offsetBound, offsetBound, 1.0f));
+			// Compute the new position
+			XMMATRIX world = XMLoadFloat4x4(&ri->World);
+			XMVECTOR pos = XMVectorAdd(world.r[3], XMLoadFloat3(&velocity) * dt);
 
-		// Update the world matrix with the new position
-		world.r[3] = pos;
-		XMStoreFloat4x4(&ri->World, world);
+			// Reflect the velocity if the object is outside the boundaries
+			XMFLOAT3 posFloat3;
+			XMStoreFloat3(&posFloat3, pos);
+
+			if (posFloat3.x < -offsetBound || posFloat3.x > offsetBound) velocity.x *= -1;
+			if (posFloat3.y < -offsetBound || posFloat3.y > offsetBound) velocity.y *= -1;
+			if (posFloat3.z < -offsetBound || posFloat3.z > offsetBound) velocity.z *= -1;
+
+			// Adjust position if it's outside bounds after reflection
+			pos = XMVectorClamp(pos, XMVectorSet(-offsetBound, -offsetBound, -offsetBound, 1.0f), XMVectorSet(offsetBound, offsetBound, offsetBound, 1.0f));
+
+			// Update the world matrix with the new position
+			world.r[3] = pos;
+			XMStoreFloat4x4(&ri->World, world);
+		}
 	}
-
 }
 
 
@@ -297,7 +299,7 @@ void Game::UpdateObjectCBs(const GameTimer& gt)
 	auto currObjectCB = mCurrFrameResource->ObjectCB.get();
 	for(auto& e : mAllRitems)
 	{
-		std::shared_ptr<RenderItem> ri = e.get()->AddComponent<RenderItem>();
+		RenderItem* ri = e->GetComponent<RenderItem>();
 
 		XMMATRIX world = XMLoadFloat4x4(&ri->World);
 		XMMATRIX texTransform = XMLoadFloat4x4(&ri->TexTransform);
@@ -777,7 +779,7 @@ void Game::BuildRenderItems()
 {
 	auto skyRitem = std::make_unique<Entity>("Sky");
 	
-	std::shared_ptr<RenderItem> ri = skyRitem.get()->AddComponent<RenderItem>();
+	std::shared_ptr<RenderItem> ri = skyRitem->AddComponent<RenderItem>();
 	//auto skyRitem = std::make_unique<RenderItem>();
 	XMStoreFloat4x4(&ri->World, XMMatrixScaling(5000.0f, 5000.0f, 5000.0f));
 	ri->TexTransform = MathHelper::Identity4x4();
@@ -793,7 +795,7 @@ void Game::BuildRenderItems()
 	mAllRitems.push_back(std::move(skyRitem));
 	
 	auto boxRitem = std::make_unique<Entity>("Box");
-	ri = boxRitem.get()->AddComponent<RenderItem>();
+	ri = boxRitem->AddComponent<RenderItem>();
 	XMStoreFloat4x4(&ri->World, XMMatrixScaling(0.25f, 0.25f, 0.25f)*XMMatrixTranslation(0.0f, 0.0f, 0.0f));
 	XMStoreFloat4x4(&ri->TexTransform, XMMatrixScaling(1.0f, 1.0f, 1.0f));
 	ri->ObjCBIndex = 1;
@@ -962,7 +964,7 @@ void Game::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector
     for(size_t i = 0; i < ritems.size(); ++i)
     {
         auto entity = ritems[i];
-		std::shared_ptr<RenderItem> ri = entity->AddComponent<RenderItem>();
+		RenderItem* ri = entity->GetComponent<RenderItem>();
     	// For vertex buffer
     	D3D12_VERTEX_BUFFER_VIEW vertexBufferView = ri->Geo->VertexBufferView();
     	cmdList->IASetVertexBuffers(0, 1, &vertexBufferView);

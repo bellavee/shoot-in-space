@@ -5,5 +5,8 @@
 //void main() {
 //	game.Initialize();
 //	game.CreateSphere(0, 0, 0);
-//	game.Update(timer);
-//}²
+//	while (true)
+//	{
+//		game.Update(timer);
+//	}
+//}
