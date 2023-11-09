@@ -814,7 +814,7 @@ void Game::BuildBoxItem(UINT objCBIndex, XMFLOAT3 position)
 	mAllRitems.push_back(std::move(boxRitem));
 }
 
-void Game::BuildSphereItem(UINT objCBIndex, XMFLOAT3 position)
+void Game::BuildSphereItem(UINT objCBIndex, XMFLOAT3 position, XMFLOAT3 velocity)
 {
 	auto sphereRitem = std::make_unique<RenderItem>();
 	sphereRitem->InitObjectCB(md3dDevice.Get());
@@ -831,9 +831,9 @@ void Game::BuildSphereItem(UINT objCBIndex, XMFLOAT3 position)
 	sphereRitem->BaseVertexLocation = sphereRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
 	mRitemLayer[static_cast<int>(RenderLayer::Opaque)].push_back(sphereRitem.get());
 	
-	sphereRitem->Velocity.x = 0.0f; // Positive value moves it along positive x-axis
-	sphereRitem->Velocity.y = 0.0f; // Zero means no movement along y-axis
-	sphereRitem->Velocity.z = 1.0f; // Zero means no movement along z-axis
+	sphereRitem->Velocity.x = velocity.x; // Positive value moves it along positive x-axis
+	sphereRitem->Velocity.y = velocity.y; // Zero means no movement along y-axis
+	sphereRitem->Velocity.z = velocity.z; // Zero means no movement along z-axis
 
 	mAllRitems.push_back(std::move(sphereRitem));
 }

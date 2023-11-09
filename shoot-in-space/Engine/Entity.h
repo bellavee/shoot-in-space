@@ -13,6 +13,8 @@ static unsigned int id = 0;
 class Entity
 {
 public:
+	Entity();
+	~Entity();
 
 	template <typename T>
 	std::shared_ptr<T> AddComponent()
