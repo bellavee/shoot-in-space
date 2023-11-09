@@ -38,7 +38,7 @@ private:
 		XMFLOAT4X4 TexTransform = MathHelper::Identity4x4();
 	
 		int NumFramesDirty = gNumFrameResources;
-		UINT ObjCBIndex = -1;
+		// UINT ObjCBIndex = -1;
 		Material* Mat = nullptr;
 		MeshGeometry* Geo = nullptr;
 	
@@ -47,6 +47,13 @@ private:
 		UINT StartIndexLocation = 0;
 		int BaseVertexLocation = 0;
 		XMFLOAT3 Velocity;
+		
+		std::unique_ptr<UploadBuffer<ObjectConstants>> ObjectCB = nullptr;
+
+		void InitObjectCB(ID3D12Device* device)
+		{
+			ObjectCB = std::make_unique<UploadBuffer<ObjectConstants>>(device, 1, true);
+		}
 	};
 	
     virtual void OnResize() override;
@@ -112,4 +119,5 @@ private:
 	Camera mCamera;
 
 	POINT mLastMousePos;
+	
 };

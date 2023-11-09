@@ -40,7 +40,7 @@ bool Game::Initialize()
     mCbvSrvDescriptorSize = md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 	mCamera.SetPosition(0.0f, 2.0f, -15.0f);
- 
+	
 	LoadTextures();
     BuildRootSignature();
 	BuildDescriptorHeaps();
@@ -48,7 +48,6 @@ bool Game::Initialize()
     BuildShapeGeometry();
 	BuildMaterials();
 	BuildSkyBox(objCBIndexCount);
-	BuildBoxItem(objCBIndexCount++, {0, 0, 0});
 	
     BuildFrameResources();
     BuildPSOs();
@@ -294,9 +293,10 @@ void Game::AnimateMaterials(const GameTimer& gt)
 
 void Game::UpdateObjectCBs(const GameTimer& gt)
 {
-	auto currObjectCB = mCurrFrameResource->ObjectCB.get();
 	for(auto& e : mAllRitems)
 	{
+		auto currObjectCB = e->ObjectCB.get();
+		
 		XMMATRIX world = XMLoadFloat4x4(&e->World);
 		XMMATRIX texTransform = XMLoadFloat4x4(&e->TexTransform);
 
@@ -305,7 +305,7 @@ void Game::UpdateObjectCBs(const GameTimer& gt)
 		XMStoreFloat4x4(&objConstants.TexTransform, XMMatrixTranspose(texTransform));
 		objConstants.MaterialIndex = e->Mat->MatCBIndex;
 
-		currObjectCB->CopyData(e->ObjCBIndex, objConstants);
+		currObjectCB->CopyData(0, objConstants);
 	}
 }
 
@@ -774,9 +774,11 @@ void Game::BuildMaterials()
 void Game::BuildSkyBox(UINT objCBIndex)
 {
 	auto skyRitem = std::make_unique<RenderItem>();
+	skyRitem->InitObjectCB(md3dDevice.Get());
+	
 	XMStoreFloat4x4(&skyRitem->World, XMMatrixScaling(5000.0f, 5000.0f, 5000.0f));
 	skyRitem->TexTransform = MathHelper::Identity4x4();
-	skyRitem->ObjCBIndex = objCBIndex;
+	// skyRitem->ObjCBIndex = objCBIndex;
 	skyRitem->Mat = mMaterials["sky"].get();
 	skyRitem->Geo = mGeometries["shapeGeo"].get();
 	skyRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -792,13 +794,15 @@ void Game::BuildSkyBox(UINT objCBIndex)
 void Game::BuildBoxItem(UINT objCBIndex, XMFLOAT3 position)
 {
 	auto boxRitem = std::make_unique<RenderItem>();
+	boxRitem->InitObjectCB(md3dDevice.Get());
+
 	XMMATRIX boxWorld = XMMatrixTranslation(position.x, position.y, position.z);
 	XMStoreFloat4x4(&boxRitem->World, boxWorld);
 	
 	XMStoreFloat4x4(&boxRitem->World, XMMatrixScaling(0.25f, 0.25f, 0.25f)*XMMatrixTranslation(0.0f, 0.0f, 0.0f));
 	XMStoreFloat4x4(&boxRitem->TexTransform, XMMatrixScaling(1.0f, 1.0f, 1.0f));
 	
-	boxRitem->ObjCBIndex = objCBIndex;
+	// boxRitem->ObjCBIndex = objCBIndex;
 	boxRitem->Mat = mMaterials["bricks0"].get();
 	boxRitem->Geo = mGeometries["shapeGeo"].get();
 	boxRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -813,10 +817,12 @@ void Game::BuildBoxItem(UINT objCBIndex, XMFLOAT3 position)
 void Game::BuildSphereItem(UINT objCBIndex, XMFLOAT3 position)
 {
 	auto sphereRitem = std::make_unique<RenderItem>();
+	sphereRitem->InitObjectCB(md3dDevice.Get());
+	
 	XMMATRIX sphereWorld = XMMatrixTranslation(position.x, position.y, position.z);
 	XMStoreFloat4x4(&sphereRitem->World, sphereWorld);
 	sphereRitem->TexTransform = MathHelper::Identity4x4();
-	sphereRitem->ObjCBIndex = objCBIndex;
+	// sphereRitem->ObjCBIndex = objCBIndex;
 	sphereRitem->Mat = mMaterials["crate"].get();
 	sphereRitem->Geo = mGeometries["shapeGeo"].get();
 	sphereRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -825,19 +831,10 @@ void Game::BuildSphereItem(UINT objCBIndex, XMFLOAT3 position)
 	sphereRitem->BaseVertexLocation = sphereRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
 	mRitemLayer[static_cast<int>(RenderLayer::Opaque)].push_back(sphereRitem.get());
 	
-	std::default_random_engine generator; // Consider seeding with a value for reproducibility
-	std::uniform_real_distribution distrib_velocity(-1.0f, 1.0f);
-	
-	// Set a random initial velocity
-	sphereRitem->Velocity.x = distrib_velocity(generator);
-	sphereRitem->Velocity.y = distrib_velocity(generator);
-	sphereRitem->Velocity.z = distrib_velocity(generator);
+	sphereRitem->Velocity.x = 0.0f; // Positive value moves it along positive x-axis
+	sphereRitem->Velocity.y = 0.0f; // Zero means no movement along y-axis
+	sphereRitem->Velocity.z = 1.0f; // Zero means no movement along z-axis
 
-	// Normalize the velocity if you want a constant speed regardless of direction
-	XMVECTOR velVec = XMLoadFloat3(&sphereRitem->Velocity);
-	velVec = XMVector3Normalize(velVec);
-	velVec = velVec * 1.0f; // SpeedFactor is a float that determines how fast the spheres should move
-	XMStoreFloat3(&sphereRitem->Velocity, velVec);
 	mAllRitems.push_back(std::move(sphereRitem));
 }
 
@@ -874,7 +871,7 @@ void Game::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector
 {
     UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
  
-	auto objectCB = mCurrFrameResource->ObjectCB->Resource();
+	// auto objectCB = mCurrFrameResource->ObjectCB->Resource();
 
     // For each render item...
     for(size_t i = 0; i < ritems.size(); ++i)
@@ -891,9 +888,9 @@ void Game::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector
 
         cmdList->IASetPrimitiveTopology(ri->PrimitiveType);
 
-        D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objectCB->GetGPUVirtualAddress() + ri->ObjCBIndex*objCBByteSize;
+        // D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objectCB->GetGPUVirtualAddress() + ri->ObjCBIndex*objCBByteSize;
 
-		cmdList->SetGraphicsRootConstantBufferView(0, objCBAddress);
+		cmdList->SetGraphicsRootConstantBufferView(0, ri->ObjectCB->Resource()->GetGPUVirtualAddress());
 
         cmdList->DrawIndexedInstanced(ri->IndexCount, 1, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
     }
