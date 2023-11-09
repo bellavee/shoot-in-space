@@ -7,8 +7,7 @@
 #include <iostream>
 #include <random>
 #include <set>
-#include <filesystem>
-#include <DirectXMath.h>
+
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
 using namespace DirectX::PackedVector;
@@ -18,6 +17,7 @@ using namespace DirectX::PackedVector;
 
 const int gNumFrameResources = 3;
 const float offsetBound = 20.0f;
+UINT objCBIndexCount = 0;
 
 Game::Game(HINSTANCE hInstance) : D3DApp(hInstance) {}
 
@@ -32,8 +32,6 @@ bool Game::Initialize()
     if(!D3DApp::Initialize())
         return false;
 
-	//std::cout << std::filesystem::current_path() << std::endl;
-
     // Reset the command list to prep for initialization commands.
     ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
 
@@ -42,14 +40,15 @@ bool Game::Initialize()
     mCbvSrvDescriptorSize = md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 	mCamera.SetPosition(0.0f, 2.0f, -15.0f);
- 
+	
 	LoadTextures();
     BuildRootSignature();
 	BuildDescriptorHeaps();
     BuildShadersAndInputLayout();
     BuildShapeGeometry();
 	BuildMaterials();
-    BuildRenderItems();
+	BuildSkyBox(objCBIndexCount);
+	
     BuildFrameResources();
     BuildPSOs();
 
@@ -104,34 +103,31 @@ void Game::Moving(const GameTimer& gt)
 		float dt = gt.DeltaTime();
     
 		// Use a pointer for the temporary object
-		Entity* ritem = e.get();
-		RigidBody* rb = ritem->GetComponent<RigidBody>();
-		if (rb != nullptr) 
-		{
-			RenderItem* ri = ritem->GetComponent<RenderItem>();
-			// Use a reference to the velocity for direct modification
-			XMFLOAT3& velocity = rb->Velocity;
+		RenderItem* ritem = e.get();
+    
+		// Use a reference to the velocity for direct modification
+		XMFLOAT3& velocity = ritem->Velocity;
+		
+		// Compute the new position
+		XMMATRIX world = XMLoadFloat4x4(&ritem->World);
+		XMVECTOR pos = XMVectorAdd(world.r[3], XMLoadFloat3(&velocity) * dt);
+    
+		// Reflect the velocity if the object is outside the boundaries
+		XMFLOAT3 posFloat3;
+		XMStoreFloat3(&posFloat3, pos);
+    
+		if (posFloat3.x < -offsetBound || posFloat3.x > offsetBound) velocity.x *= -1;
+		if (posFloat3.y < -offsetBound || posFloat3.y > offsetBound) velocity.y *= -1;
+		if (posFloat3.z < -offsetBound || posFloat3.z > offsetBound) velocity.z *= -1;
 
-			// Compute the new position
-			XMMATRIX world = XMLoadFloat4x4(&ri->World);
-			XMVECTOR pos = XMVectorAdd(world.r[3], XMLoadFloat3(&velocity) * dt);
+		// Adjust position if it's outside bounds after reflection
+		pos = XMVectorClamp(pos, XMVectorSet(-offsetBound, -offsetBound, -offsetBound, 1.0f), XMVectorSet(offsetBound, offsetBound, offsetBound, 1.0f));
 
-			// Reflect the velocity if the object is outside the boundaries
-			XMFLOAT3 posFloat3;
-			XMStoreFloat3(&posFloat3, pos);
-
-			if (posFloat3.x < -offsetBound || posFloat3.x > offsetBound) velocity.x *= -1;
-			if (posFloat3.y < -offsetBound || posFloat3.y > offsetBound) velocity.y *= -1;
-			if (posFloat3.z < -offsetBound || posFloat3.z > offsetBound) velocity.z *= -1;
-
-			// Adjust position if it's outside bounds after reflection
-			pos = XMVectorClamp(pos, XMVectorSet(-offsetBound, -offsetBound, -offsetBound, 1.0f), XMVectorSet(offsetBound, offsetBound, offsetBound, 1.0f));
-
-			// Update the world matrix with the new position
-			world.r[3] = pos;
-			XMStoreFloat4x4(&ri->World, world);
-		}
+		// Update the world matrix with the new position
+		world.r[3] = pos;
+		XMStoreFloat4x4(&ritem->World, world);
 	}
+
 }
 
 
@@ -235,6 +231,7 @@ void Game::OnMouseDown(WPARAM btnState, int x, int y)
     mLastMousePos.y = y;
 
     SetCapture(mhMainWnd);
+	BuildSphereAtMousePosition(objCBIndexCount++, mLastMousePos);
 }
 
 void Game::OnMouseUp(WPARAM btnState, int x, int y)
@@ -296,20 +293,19 @@ void Game::AnimateMaterials(const GameTimer& gt)
 
 void Game::UpdateObjectCBs(const GameTimer& gt)
 {
-	auto currObjectCB = mCurrFrameResource->ObjectCB.get();
 	for(auto& e : mAllRitems)
 	{
-		RenderItem* ri = e->GetComponent<RenderItem>();
-
-		XMMATRIX world = XMLoadFloat4x4(&ri->World);
-		XMMATRIX texTransform = XMLoadFloat4x4(&ri->TexTransform);
+		auto currObjectCB = e->ObjectCB.get();
+		
+		XMMATRIX world = XMLoadFloat4x4(&e->World);
+		XMMATRIX texTransform = XMLoadFloat4x4(&e->TexTransform);
 
 		ObjectConstants objConstants;
 		XMStoreFloat4x4(&objConstants.World, XMMatrixTranspose(world));
 		XMStoreFloat4x4(&objConstants.TexTransform, XMMatrixTranspose(texTransform));
-		objConstants.MaterialIndex = ri->Mat->MatCBIndex;
+		objConstants.MaterialIndex = e->Mat->MatCBIndex;
 
-		currObjectCB->CopyData(ri->ObjCBIndex, objConstants);
+		currObjectCB->CopyData(0, objConstants);
 	}
 }
 
@@ -775,196 +771,113 @@ void Game::BuildMaterials()
 	mMaterials["crate"] = std::move(crate);
 }
 
-void Game::BuildRenderItems()
+void Game::BuildSkyBox(UINT objCBIndex)
 {
-	auto skyRitem = std::make_unique<Entity>("Sky");
+	auto skyRitem = std::make_unique<RenderItem>();
+	skyRitem->InitObjectCB(md3dDevice.Get());
 	
-	std::shared_ptr<RenderItem> ri = skyRitem->AddComponent<RenderItem>();
-	//auto skyRitem = std::make_unique<RenderItem>();
-	XMStoreFloat4x4(&ri->World, XMMatrixScaling(5000.0f, 5000.0f, 5000.0f));
-	ri->TexTransform = MathHelper::Identity4x4();
-	ri->ObjCBIndex = 0;
-	ri->Mat = mMaterials["sky"].get();
-	ri->Geo = mGeometries["shapeGeo"].get();
-	ri->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	ri->IndexCount = ri->Geo->DrawArgs["sphere"].IndexCount;
-	ri->StartIndexLocation = ri->Geo->DrawArgs["sphere"].StartIndexLocation;
-	ri->BaseVertexLocation = ri->Geo->DrawArgs["sphere"].BaseVertexLocation;
+	XMStoreFloat4x4(&skyRitem->World, XMMatrixScaling(5000.0f, 5000.0f, 5000.0f));
+	skyRitem->TexTransform = MathHelper::Identity4x4();
+	// skyRitem->ObjCBIndex = objCBIndex;
+	skyRitem->Mat = mMaterials["sky"].get();
+	skyRitem->Geo = mGeometries["shapeGeo"].get();
+	skyRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	skyRitem->IndexCount = skyRitem->Geo->DrawArgs["sphere"].IndexCount;
+	skyRitem->StartIndexLocation = skyRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
+	skyRitem->BaseVertexLocation = skyRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
 
 	mRitemLayer[(int)RenderLayer::Sky].push_back(skyRitem.get());
 	mAllRitems.push_back(std::move(skyRitem));
 	
-	auto boxRitem = std::make_unique<Entity>("Box");
-	ri = boxRitem->AddComponent<RenderItem>();
-	XMStoreFloat4x4(&ri->World, XMMatrixScaling(0.25f, 0.25f, 0.25f)*XMMatrixTranslation(0.0f, 0.0f, 0.0f));
-	XMStoreFloat4x4(&ri->TexTransform, XMMatrixScaling(1.0f, 1.0f, 1.0f));
-	ri->ObjCBIndex = 1;
-	ri->Mat = mMaterials["bricks0"].get();
-	ri->Geo = mGeometries["shapeGeo"].get();
-	ri->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	ri->IndexCount = ri->Geo->DrawArgs["box"].IndexCount;
-	ri->StartIndexLocation = ri->Geo->DrawArgs["box"].StartIndexLocation;
-	ri->BaseVertexLocation = ri->Geo->DrawArgs["box"].BaseVertexLocation;
+}
+
+void Game::BuildBoxItem(UINT objCBIndex, XMFLOAT3 position)
+{
+	auto boxRitem = std::make_unique<RenderItem>();
+	boxRitem->InitObjectCB(md3dDevice.Get());
+
+	XMMATRIX boxWorld = XMMatrixTranslation(position.x, position.y, position.z);
+	XMStoreFloat4x4(&boxRitem->World, boxWorld);
+	
+	XMStoreFloat4x4(&boxRitem->World, XMMatrixScaling(0.25f, 0.25f, 0.25f)*XMMatrixTranslation(0.0f, 0.0f, 0.0f));
+	XMStoreFloat4x4(&boxRitem->TexTransform, XMMatrixScaling(1.0f, 1.0f, 1.0f));
+	
+	// boxRitem->ObjCBIndex = objCBIndex;
+	boxRitem->Mat = mMaterials["bricks0"].get();
+	boxRitem->Geo = mGeometries["shapeGeo"].get();
+	boxRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	boxRitem->IndexCount = boxRitem->Geo->DrawArgs["box"].IndexCount;
+	boxRitem->StartIndexLocation = boxRitem->Geo->DrawArgs["box"].StartIndexLocation;
+	boxRitem->BaseVertexLocation = boxRitem->Geo->DrawArgs["box"].BaseVertexLocation;
 
 	mRitemLayer[(int)RenderLayer::Opaque].push_back(boxRitem.get());
 	mAllRitems.push_back(std::move(boxRitem));
-	
-	UINT objCBIndex = 2;
-	struct XMFLOAT3Comparator {
-		bool operator()(const XMFLOAT3& lhs, const XMFLOAT3& rhs) const {
-			if (lhs.x < rhs.x) return true;
-			if (rhs.x < lhs.x) return false;
-			if (lhs.y < rhs.y) return true;
-			if (rhs.y < lhs.y) return false;
-			return lhs.z < rhs.z;
-		}
-	};
-
-	std::default_random_engine generator; // Consider seeding with a value for reproducibility
-	std::uniform_real_distribution distribution_x(-offsetBound, offsetBound); // Set bounds for X
-	std::uniform_real_distribution distribution_y(0.0f, offsetBound / 2); // Set bounds for Y
-	std::uniform_real_distribution distribution_z(-offsetBound, offsetBound); // Set bounds for Z
-	std::uniform_real_distribution distrib_velocity(-1.0f, 1.0f);
-	
-	std::set<XMFLOAT3, XMFLOAT3Comparator> usedPositions;
-	
-	for(int i = 0; i < 20; ++i)
-	{
-		//auto sphereRitem = std::make_unique<RenderItem>();
-		auto sphereRitem = std::make_unique<Entity>("Sphere");
-		std::shared_ptr<RenderItem> ri = sphereRitem->AddComponent<RenderItem>();
-		std::shared_ptr<RigidBody> rb = sphereRitem->AddComponent<RigidBody>();
-		std::shared_ptr<Transform> transform = sphereRitem->AddComponent<Transform>();
-		
-		const float sphereRadius = 5.0f; // Sphere radius
-		const float minSeparation = sphereRadius * 2.0f; // Minimum distance between sphere centers
-
-		// Generate a unique random position for the sphere
-		bool isUnique;
-		do {
-			
-			transform->Position.x = distribution_x(generator);
-			transform->Position.y = distribution_y(generator);
-			transform->Position.z = distribution_z(generator);
-
-			// Check if this position is far enough from all others
-			isUnique = true;
-			for (const auto& usedPos : usedPositions) {
-				XMFLOAT3 dir = {
-					usedPos.x - transform->Position.x,
-					usedPos.y - transform->Position.y,
-					usedPos.z - transform->Position.z
-				};
-				float distSq = dir.x * dir.x + dir.y * dir.y + dir.z * dir.z;
-				if (distSq < minSeparation * minSeparation) {
-					isUnique = false;
-					break;
-				}
-			}
-		} while (!isUnique);
-
-		// Now we have a unique position, store it
-		usedPositions.insert(transform->Position);
-
-
-		// Move the sphere to the random position
-		XMMATRIX sphereWorld = XMMatrixTranslation(transform->Position.x, transform->Position.y, transform->Position.z);
-		XMStoreFloat4x4(&ri->World, sphereWorld);
-		
-		XMStoreFloat4x4(&ri->World, sphereWorld);
-		ri->TexTransform = MathHelper::Identity4x4();
-		ri->ObjCBIndex = objCBIndex++;
-		ri->Mat = mMaterials["crate"].get();
-		ri->Geo = mGeometries["shapeGeo"].get();
-		ri->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		ri->IndexCount = ri->Geo->DrawArgs["sphere"].IndexCount;
-		ri->StartIndexLocation = ri->Geo->DrawArgs["sphere"].StartIndexLocation;
-		ri->BaseVertexLocation = ri->Geo->DrawArgs["sphere"].BaseVertexLocation;
-
-		mRitemLayer[static_cast<int>(RenderLayer::Opaque)].push_back(sphereRitem.get());
-
-		// Set a random initial velocity
-		rb->Velocity.x = distrib_velocity(generator);
-		rb->Velocity.y = distrib_velocity(generator);
-		rb->Velocity.z = distrib_velocity(generator);
-
-		// Normalize the velocity if you want a constant speed regardless of direction
-		XMVECTOR velVec = XMLoadFloat3(&rb->Velocity);
-		velVec = XMVector3Normalize(velVec);
-		velVec = velVec * 1.0f; // SpeedFactor is a float that determines how fast the spheres should move
-		XMStoreFloat3(&rb->Velocity, velVec);
-		
-		mAllRitems.push_back(std::move(sphereRitem));
-	}
 }
 
-void Game::CreateSphere(float x, float y, float z)
+void Game::BuildSphereItem(UINT objCBIndex, XMFLOAT3 position)
 {
-	UINT objCBIndex = 2;
-	struct XMFLOAT3Comparator {
-		bool operator()(const XMFLOAT3& lhs, const XMFLOAT3& rhs) const {
-			if (lhs.x < rhs.x) return true;
-			if (rhs.x < lhs.x) return false;
-			if (lhs.y < rhs.y) return true;
-			if (rhs.y < lhs.y) return false;
-			return lhs.z < rhs.z;
-		}
-	};
-
-
-	auto sphereRitem = std::make_unique<Entity>("Sphere");
-	std::shared_ptr<RenderItem> ri = sphereRitem->AddComponent<RenderItem>();
-	std::shared_ptr<RigidBody> rb = sphereRitem->AddComponent<RigidBody>();
-
-		const float sphereRadius = 5.0f; // Sphere radius
-		const float minSeparation = sphereRadius * 2.0f; // Minimum distance between sphere centers
-
-		// Generate a unique random position for the sphere
-		XMFLOAT3 randomPos;
-			randomPos.x = x;
-			randomPos.y = y;
-			randomPos.z = z;
-
-		// Move the sphere to the random position
-		XMMATRIX sphereWorld = XMMatrixTranslation(randomPos.x, randomPos.y, randomPos.z);
-		XMStoreFloat4x4(&ri->World, sphereWorld);
-		ri->TexTransform = MathHelper::Identity4x4();
-		ri->ObjCBIndex = objCBIndex++;
-		ri->Mat = mMaterials["crate"].get();
-		ri->Geo = mGeometries["shapeGeo"].get();
-		ri->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		ri->IndexCount = ri->Geo->DrawArgs["sphere"].IndexCount;
-		ri->StartIndexLocation = ri->Geo->DrawArgs["sphere"].StartIndexLocation;
-		ri->BaseVertexLocation = ri->Geo->DrawArgs["sphere"].BaseVertexLocation;
-
-		mRitemLayer[static_cast<int>(RenderLayer::Opaque)].push_back(sphereRitem.get());
-
-		// Set initial velocity
-		rb->Velocity.x = 1;
-		rb->Velocity.y = 1;
-		rb->Velocity.z = 1;
-
-		// Normalize the velocity if you want a constant speed regardless of direction
-		XMVECTOR velVec = XMLoadFloat3(&rb->Velocity);
-		velVec = XMVector3Normalize(velVec);
-		velVec = velVec * 1.0f; // SpeedFactor is a float that determines how fast the spheres should move
-		XMStoreFloat3(&rb->Velocity, velVec);
-
-		mAllRitems.push_back(std::move(sphereRitem));
+	auto sphereRitem = std::make_unique<RenderItem>();
+	sphereRitem->InitObjectCB(md3dDevice.Get());
 	
+	XMMATRIX sphereWorld = XMMatrixTranslation(position.x, position.y, position.z);
+	XMStoreFloat4x4(&sphereRitem->World, sphereWorld);
+	sphereRitem->TexTransform = MathHelper::Identity4x4();
+	// sphereRitem->ObjCBIndex = objCBIndex;
+	sphereRitem->Mat = mMaterials["crate"].get();
+	sphereRitem->Geo = mGeometries["shapeGeo"].get();
+	sphereRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	sphereRitem->IndexCount = sphereRitem->Geo->DrawArgs["sphere"].IndexCount;
+	sphereRitem->StartIndexLocation = sphereRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
+	sphereRitem->BaseVertexLocation = sphereRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
+	mRitemLayer[static_cast<int>(RenderLayer::Opaque)].push_back(sphereRitem.get());
+	
+	sphereRitem->Velocity.x = 0.0f; // Positive value moves it along positive x-axis
+	sphereRitem->Velocity.y = 0.0f; // Zero means no movement along y-axis
+	sphereRitem->Velocity.z = 1.0f; // Zero means no movement along z-axis
+
+	mAllRitems.push_back(std::move(sphereRitem));
 }
 
-void Game::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<Entity*>& ritems)
+void Game::BuildSphereAtMousePosition(UINT objCBIndex, POINT mousePos)
+{
+	// Calculate NDC from mouse position
+	XMFLOAT2 ndcPos = {
+		(2.0f * mousePos.x / mClientWidth) - 1.0f,
+		1.0f - (2.0f * mousePos.y / mClientHeight)
+	};
+
+	// Unproject to world space
+	XMVECTOR mousePosInWorld = XMVector3Unproject(
+		XMVectorSet(ndcPos.x, ndcPos.y, 0, 1),
+		0, 0,
+		mClientWidth, mClientHeight,
+		0, 1,
+		mCamera.GetProj(),
+		mCamera.GetView(),
+		XMMatrixIdentity() // No additional world transformations
+	);
+
+	mCamera.UpdateViewMatrix();
+
+	XMFLOAT3 worldPosition;
+	XMStoreFloat3(&worldPosition, mousePosInWorld);
+
+	// Now call your existing function with the new position
+	BuildSphereItem(objCBIndex, worldPosition);
+}
+
+
+void Game::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems)
 {
     UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
  
-	auto objectCB = mCurrFrameResource->ObjectCB->Resource();
+	// auto objectCB = mCurrFrameResource->ObjectCB->Resource();
 
     // For each render item...
     for(size_t i = 0; i < ritems.size(); ++i)
     {
-        auto entity = ritems[i];
-		RenderItem* ri = entity->GetComponent<RenderItem>();
+        auto ri = ritems[i];
+
     	// For vertex buffer
     	D3D12_VERTEX_BUFFER_VIEW vertexBufferView = ri->Geo->VertexBufferView();
     	cmdList->IASetVertexBuffers(0, 1, &vertexBufferView);
@@ -975,9 +888,9 @@ void Game::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector
 
         cmdList->IASetPrimitiveTopology(ri->PrimitiveType);
 
-        D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objectCB->GetGPUVirtualAddress() + ri->ObjCBIndex*objCBByteSize;
+        // D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objectCB->GetGPUVirtualAddress() + ri->ObjCBIndex*objCBByteSize;
 
-		cmdList->SetGraphicsRootConstantBufferView(0, objCBAddress);
+		cmdList->SetGraphicsRootConstantBufferView(0, ri->ObjectCB->Resource()->GetGPUVirtualAddress());
 
         cmdList->DrawIndexedInstanced(ri->IndexCount, 1, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
     }

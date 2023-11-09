@@ -5,10 +5,6 @@
 #include "../Common/UploadBuffer.h"
 #include "../Common/GeometryGenerator.h"
 #include "../Common/Camera.h"
-#include "../Engine/Entity.h"
-#include "../Engine/RenderItem.h"
-#include "../Engine/RigidBody.h"
-#include "../Engine/Transform.h"
 #include "FrameResource.h"
 
 using Microsoft::WRL::ComPtr;
@@ -31,11 +27,9 @@ public:
     ~Game();
 
     virtual bool Initialize()override;
-	void CreateSphere(float x, float y, float z);
-	virtual void Update(const GameTimer& gt) override;
 
 private:
-	/*struct RenderItem
+	struct RenderItem
 	{
 		RenderItem() = default;
 		RenderItem(const RenderItem& rhs) = delete;
@@ -44,7 +38,7 @@ private:
 		XMFLOAT4X4 TexTransform = MathHelper::Identity4x4();
 	
 		int NumFramesDirty = gNumFrameResources;
-		UINT ObjCBIndex = -1;
+		// UINT ObjCBIndex = -1;
 		Material* Mat = nullptr;
 		MeshGeometry* Geo = nullptr;
 	
@@ -53,8 +47,17 @@ private:
 		UINT StartIndexLocation = 0;
 		int BaseVertexLocation = 0;
 		XMFLOAT3 Velocity;
-	};*/
+		
+		std::unique_ptr<UploadBuffer<ObjectConstants>> ObjectCB = nullptr;
+
+		void InitObjectCB(ID3D12Device* device)
+		{
+			ObjectCB = std::make_unique<UploadBuffer<ObjectConstants>>(device, 1, true);
+		}
+	};
+	
     virtual void OnResize() override;
+    virtual void Update(const GameTimer& gt) override;
     void Moving(const GameTimer& gt);
     virtual void Draw(const GameTimer& gt) override;
 
@@ -76,12 +79,14 @@ private:
     void BuildPSOs();
     void BuildFrameResources();
     void BuildMaterials();
-    void BuildRenderItems();
-    void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<Entity*>& ritems);
+    void BuildSkyBox(UINT objCBIndex);
+    void BuildBoxItem(UINT objCBIndex, XMFLOAT3 position);
+    void BuildSphereItem(UINT objCBIndex, XMFLOAT3 position);
+    void BuildSphereAtMousePosition(UINT objCBIndex, POINT mousePos);
+    void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
 
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers();
-	std::vector<std::unique_ptr<Entity>> mAllRitems;
-
+	
 private:
 	std::vector<std::unique_ptr<FrameResource>> mFrameResources;
 	FrameResource* mCurrFrameResource = nullptr;
@@ -102,9 +107,10 @@ private:
 	std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
  
 	// List of all the render items.
+	std::vector<std::unique_ptr<RenderItem>> mAllRitems;
 
 	// Render items divided by PSO.
-	std::vector<Entity*> mRitemLayer[(int)RenderLayer::Count];
+	std::vector<RenderItem*> mRitemLayer[(int)RenderLayer::Count];
 
 	UINT mSkyTexHeapIndex = 0;
 
@@ -113,4 +119,5 @@ private:
 	Camera mCamera;
 
 	POINT mLastMousePos;
+	
 };
