@@ -14,9 +14,6 @@ class Entity
 {
 public:
 
-	Entity(std::string name);
-	~Entity();
-
 	template <typename T>
 	std::shared_ptr<T> AddComponent()
 	{

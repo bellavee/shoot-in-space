@@ -22,6 +22,9 @@
     <Filter Include="Fichiers sources\Component">
       <UniqueIdentifier>{d0b0dc2f-f837-4258-bfbc-add297cf7167}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Fichiers sources\Common">
+      <UniqueIdentifier>{3f080887-d46e-4a2e-a9a1-09c7afaad866}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Common\MathHelper.h">
@@ -48,9 +51,6 @@
     <ClInclude Include="Engine\Entity.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\EntityManager.h">
-      <Filter>Fichiers d%27en-tête</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\framework.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
@@ -58,9 +58,6 @@
       <Filter>Fichiers d%27en-tête\Common</Filter>
     </ClInclude>
     <ClInclude Include="Common\d3dx12.h">
-      <Filter>Fichiers d%27en-tête\Common</Filter>
-    </ClInclude>
-    <ClInclude Include="Common\Camera.h">
       <Filter>Fichiers d%27en-tête\Common</Filter>
     </ClInclude>
     <ClInclude Include="Common\d3dApp.h">
@@ -87,27 +84,18 @@
     <ClInclude Include="Engine\RenderItem.h">
       <Filter>Fichiers d%27en-tête\Component</Filter>
     </ClInclude>
+    <ClInclude Include="Common\Camera.h">
+      <Filter>Fichiers d%27en-tête</Filter>
+    </ClInclude>
+    <ClInclude Include="Inputs.h">
+      <Filter>Fichiers d%27en-tête</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
     <ClCompile Include="Common\Camera.cpp">
-      <Filter>Fichiers sources</Filter>
-    </ClCompile>
-    <ClCompile Include="Common\d3dApp.cpp">
-      <Filter>Fichiers sources</Filter>
-    </ClCompile>
-    <ClCompile Include="Common\d3dUtil.cpp">
-      <Filter>Fichiers sources</Filter>
-    </ClCompile>
-    <ClCompile Include="Common\DDSTextureLoader.cpp">
-      <Filter>Fichiers sources</Filter>
-    </ClCompile>
-    <ClCompile Include="Common\GameTimer.cpp">
-      <Filter>Fichiers sources</Filter>
-    </ClCompile>
-    <ClCompile Include="Common\GeometryGenerator.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
     <ClCompile Include="Common\MathHelper.cpp">
@@ -125,9 +113,6 @@
     <ClCompile Include="Engine\Entity.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\EntityManager.cpp">
-      <Filter>Fichiers sources</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\RenderItem.cpp">
       <Filter>Fichiers sources\Component</Filter>
     </ClCompile>
@@ -136,6 +121,24 @@
     </ClCompile>
     <ClCompile Include="Engine\Transform.cpp">
       <Filter>Fichiers sources\Component</Filter>
+    </ClCompile>
+    <ClCompile Include="Inputs.cpp">
+      <Filter>Fichiers sources</Filter>
+    </ClCompile>
+    <ClCompile Include="Common\d3dApp.cpp">
+      <Filter>Fichiers sources\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="Common\d3dUtil.cpp">
+      <Filter>Fichiers sources\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="Common\DDSTextureLoader.cpp">
+      <Filter>Fichiers sources\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="Common\GeometryGenerator.cpp">
+      <Filter>Fichiers sources\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="Common\GameTimer.cpp">
+      <Filter>Fichiers sources\Common</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
